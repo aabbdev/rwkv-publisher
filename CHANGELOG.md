@@ -16,6 +16,9 @@
   generated compatibility packages, internal module files, duplicated docs, and
   duplicated license files.
 - Added parent-locked atomic Hub commits and immutable remote verification.
+- Added an optional metadata-only TOML, explicit `--profile`, and a terminal
+  profile selector used only for unknown checkpoints. Non-interactive builds
+  remain prompt-free and default to no unsupported claims.
 
 This is an intentional clean break. Version 0.2 does not read `release.toml` and
 does not provide the 0.1 `convert`, `init`, `--config`, or `--execute` interfaces.

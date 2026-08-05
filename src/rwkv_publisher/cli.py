@@ -30,6 +30,20 @@ def _parser() -> argparse.ArgumentParser:
     )
     build.add_argument("--max-shard-size", default="5GB")
     build.add_argument("--source-ref")
+    build.add_argument(
+        "--config",
+        type=Path,
+        help="Optional TOML containing only profile and human metadata",
+    )
+    build.add_argument(
+        "--profile",
+        help="Metadata family profile for an unregistered checkpoint",
+    )
+    build.add_argument(
+        "--no-input",
+        action="store_true",
+        help="Never show the interactive profile selector",
+    )
     build.add_argument("--offline", action="store_true")
     build.add_argument("--dry-run", action="store_true")
     build.add_argument("--json", action="store_true")
@@ -68,6 +82,9 @@ def main(argv: list[str] | None = None) -> None:
             max_shard_size=args.max_shard_size,
             source_ref=args.source_ref,
             offline=args.offline,
+            metadata_config=args.config,
+            metadata_profile=args.profile,
+            interactive=not args.no_input and not args.json,
             dry_run=args.dry_run,
         )
     else:

@@ -16,7 +16,8 @@ from rwkv_publisher import manifest as manifest_module
 from rwkv_publisher.assets import sha256_file
 from rwkv_publisher.build import build_release
 from rwkv_publisher.manifest import validate_release
-from rwkv_publisher.profiles import load_profiles
+from rwkv_publisher.metadata import ReleaseMetadata
+from rwkv_publisher.profiles import CheckpointProfile, load_profiles
 from rwkv_publisher.source import ResolvedSource
 
 
@@ -77,7 +78,7 @@ def built_release(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def test_build_produces_native_flat_valid_release(built_release: Path) -> None:
     manifest = validate_release(built_release)
-    assert manifest["schema_version"] == 3
+    assert manifest["schema_version"] == 4
     assert manifest["identity"]["parameter_label"] == "0.1"
     assert manifest["conversion"]["source_float_dtypes"] == ["float32"]
     assert manifest["conversion"]["target_float_dtypes"] == ["float32"]
@@ -312,6 +313,8 @@ def test_known_profile_dry_run_does_not_create_output(
     )
     assert result["dry_run"] is True
     assert result["model_name"] == "RWKV7-0.1B-20241210"
+    assert result["metadata"]["profile"] == "world-v2.8"
+    assert result["metadata"]["provenance"] == "locked-profile"
     assert not (tmp_path / "dist").exists()
 
 
@@ -337,3 +340,126 @@ def test_release_manifest_is_destination_neutral(built_release: Path) -> None:
         (built_release / "release-manifest.json").read_text(encoding="utf-8")
     )
     assert "repo_id" not in json.dumps(manifest)
+
+
+def test_build_applies_optional_metadata_toml(
+    built_release: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(build_module, "_parameter_label", lambda _: "0.1")
+    source = built_release.parent.parent / "rwkv-world-20241210.pth"
+    config = built_release.parent.parent / "metadata.toml"
+    config.write_text(
+        'schema = 1\nprofile = "world-v2.8"\n\n'
+        '[metadata]\nlanguages = ["fr"]\ndatasets = ["owner/custom"]\n'
+        'context_length = 2048\nlicense = "mit"\n',
+        encoding="utf-8",
+    )
+    release = Path(
+        build_release(
+            source,
+            output=built_release.parent.parent / "metadata-release",
+            metadata_config=config,
+        )["release"]
+    )
+    manifest = validate_release(release)
+    assert manifest["metadata"] == {
+        "profile": "world-v2.8",
+        "languages": ["fr"],
+        "datasets": ["owner/custom"],
+        "context_length": 2048,
+        "license": "mit",
+        "provenance": "config",
+    }
+    card = (release / "README.md").read_text(encoding="utf-8")
+    assert '  - "fr"' in card
+    assert '  - "owner/custom"' in card
+    assert "license: mit" in card
+    assert "| Training context | `2048 tokens` |" in card
+
+
+def test_profile_derived_metadata_is_reconstructed_from_lock(
+    built_release: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(build_module, "_parameter_label", lambda _: "0.1")
+    source = built_release.parent.parent / "rwkv-world-20241210.pth"
+    release = Path(
+        build_release(
+            source,
+            output=built_release.parent.parent / "profile-release",
+            metadata_profile="world-v2.8",
+        )["release"]
+    )
+    manifest_path = release / "release-manifest.json"
+    manifest_path.chmod(0o644)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["metadata"]["provenance"] == "cli"
+    manifest["metadata"]["languages"] = ["invented"]
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="differs from its family profile"):
+        validate_release(release)
+
+
+def test_model_card_separates_weight_and_runtime_licenses(tmp_path: Path) -> None:
+    profile = CheckpointProfile(
+        id="custom",
+        family="custom-family",
+        filename="model-20260806.pth",
+        hub_repo="owner/repo",
+        hub_revision="a" * 40,
+        sha256="b" * 64,
+        size_bytes=1,
+        parameter_label="0.1",
+        release_date="20260806",
+        context_length=2048,
+        license="mit",
+    )
+    source = ResolvedSource(
+        kind="local",
+        local_path=tmp_path / profile.filename,
+        filename=profile.filename,
+        sha256=profile.sha256,
+        size_bytes=profile.size_bytes,
+        reference=profile.source_reference,
+        revision=profile.hub_revision,
+        profile=profile,
+    )
+    conversion_result = conversion.ConversionResult(
+        config={
+            "vocab_size": 259,
+            "hidden_size": 64,
+            "num_hidden_layers": 2,
+            "num_heads": 1,
+            "head_dim": 64,
+            "intermediate_size": 128,
+        },
+        source_float_dtypes=("bfloat16",),
+        target_float_dtype="bfloat16",
+        explicit_cast=False,
+        source_parameter_count=100_000_000,
+        serialized_parameter_count=100_000_000,
+        tensor_count=1,
+        synthesized_tensors=(),
+        weight_bytes=200_000_000,
+        weight_files=(),
+    )
+    card = build_module._render_card(
+        source=source,
+        conversion=conversion_result,
+        parameter_label="0.1",
+        release_date="20260806",
+        context_length=2048,
+        metadata=ReleaseMetadata(
+            profile="custom-family",
+            languages=("en",),
+            datasets=(),
+            context_length=2048,
+            license="mit",
+            provenance="locked-profile",
+        ),
+    )
+    assert "weights use the locked profile license `mit`" in card
+    assert "inference bundle is licensed separately" in card
+    assert "[Apache-2.0](LICENSE)" in card
+    assert "[mit](LICENSE)" not in card

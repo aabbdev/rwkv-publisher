@@ -3,6 +3,7 @@
   "families": {
     "g1h": {
       "chat_template": "rwkv-world",
+      "context_length": 10240,
       "datasets": [
         "HuggingFaceFW/fineweb-edu",
         "mlfoundations/dclm-baseline-1.0",
@@ -11,10 +12,12 @@
         "bigcode/starcoderdata",
         "oscar-corpus/OSCAR-2301"
       ],
-      "languages": ["en", "zh", "fr", "es", "de", "pt", "ru", "it", "ja", "ko", "vi", "ar"]
+      "languages": ["en", "zh", "fr", "es", "de", "pt", "ru", "it", "ja", "ko", "vi", "ar"],
+      "license": "apache-2.0"
     },
     "world-v2.8": {
       "chat_template": "rwkv-world",
+      "context_length": 4096,
       "datasets": [
         "HuggingFaceFW/fineweb-edu",
         "mlfoundations/dclm-baseline-1.0",
@@ -23,7 +26,8 @@
         "bigcode/starcoderdata",
         "oscar-corpus/OSCAR-2301"
       ],
-      "languages": ["en", "zh", "fr", "es", "de", "pt", "ru", "it", "ja", "ko", "vi", "ar"]
+      "languages": ["en", "zh", "fr", "es", "de", "pt", "ru", "it", "ja", "ko", "vi", "ar"],
+      "license": "apache-2.0"
     }
   },
   "checkpoints": {

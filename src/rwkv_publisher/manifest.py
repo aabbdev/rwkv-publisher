@@ -21,12 +21,13 @@ from .assets import (
 )
 from .conversion import ConversionResult, _expected_shapes
 from .encoding import END_TOKEN, build_fast_tokenizer
+from .metadata import ReleaseMetadata
 from .profiles import load_profiles
 from .runtime_export import build_flat_runtime
 from .source import ResolvedSource
 
 MANIFEST_NAME = "release-manifest.json"
-MANIFEST_SCHEMA = 3
+MANIFEST_SCHEMA = 4
 DTYPE_BYTES = {
     "BOOL": 1,
     "U8": 1,
@@ -256,6 +257,7 @@ def validate_release(root: Path) -> dict[str, Any]:
         "builder",
         "source",
         "profile",
+        "metadata",
         "identity",
         "conversion",
         "runtime",
@@ -393,9 +395,6 @@ def validate_release(root: Path) -> dict[str, Any]:
     profile_data = document.get("profile", {})
     checkpoint_id = profile_data.get("checkpoint")
     family_id = profile_data.get("family")
-    expected_languages: tuple[str, ...] = ()
-    expected_datasets: tuple[str, ...] = ()
-    expected_license = "other"
     profile = None
     if checkpoint_id is None:
         if family_id is not None:
@@ -430,9 +429,6 @@ def validate_release(root: Path) -> dict[str, Any]:
         except KeyError as error:
             raise ValueError("manifest names an unknown checkpoint profile") from error
         family = registry.families[profile.family]
-        expected_languages = family.languages
-        expected_datasets = family.datasets
-        expected_license = profile.license
         source = document.get("source", {})
         if (
             family_id != profile.family
@@ -447,6 +443,83 @@ def validate_release(root: Path) -> dict[str, Any]:
             or identity.get("training_context_length") != profile.context_length
         ):
             raise ValueError("release facts do not match the locked checkpoint profile")
+    metadata_data = document.get("metadata", {})
+    if not isinstance(metadata_data, dict) or set(metadata_data) != {
+        "profile",
+        "languages",
+        "datasets",
+        "context_length",
+        "license",
+        "provenance",
+    }:
+        raise ValueError("release metadata has invalid fields")
+    metadata_profile = metadata_data.get("profile")
+    languages = _metadata_strings(metadata_data.get("languages"), "languages")
+    datasets = _metadata_strings(metadata_data.get("datasets"), "datasets")
+    metadata_context = metadata_data.get("context_length")
+    if metadata_context is not None and (
+        type(metadata_context) is not int or metadata_context <= 0
+    ):
+        raise ValueError("release metadata context length is invalid")
+    metadata_license = metadata_data.get("license")
+    if metadata_license is not None and (
+        not isinstance(metadata_license, str)
+        or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.+-]*", metadata_license) is None
+    ):
+        raise ValueError("release metadata license is invalid")
+    provenance = metadata_data.get("provenance")
+    if provenance not in {
+        "locked-profile",
+        "config-profile",
+        "config",
+        "cli",
+        "interactive",
+        "none",
+    }:
+        raise ValueError("release metadata provenance is invalid")
+    registry = load_profiles()
+    if metadata_profile is not None and metadata_profile not in registry.families:
+        raise ValueError("release metadata names an unknown family profile")
+    if profile is not None and metadata_profile != profile.family:
+        raise ValueError("release metadata profile does not match the checkpoint")
+    if provenance in {"locked-profile", "config-profile", "cli", "interactive"}:
+        if metadata_profile is None:
+            raise ValueError("profile-derived metadata requires a family profile")
+        family = registry.families[metadata_profile]
+        if (
+            languages != family.languages
+            or datasets != family.datasets
+            or metadata_context != family.context_length
+            or metadata_license != family.license
+        ):
+            raise ValueError("locked metadata differs from its family profile")
+    if provenance == "locked-profile" and profile is None:
+        raise ValueError("locked metadata requires a checkpoint profile")
+    if provenance == "interactive" and profile is not None:
+        raise ValueError("recognized checkpoints cannot use interactive metadata")
+    if provenance == "none" and (
+        metadata_profile is not None
+        or languages
+        or datasets
+        or metadata_context is not None
+        or metadata_license is not None
+    ):
+        raise ValueError("metadata with no provenance must not contain claims")
+    if profile is not None and (
+        metadata_context != profile.context_length
+        or metadata_license != profile.license
+    ):
+        raise ValueError("release context or license conflicts with checkpoint profile")
+    if identity.get("training_context_length") != metadata_context:
+        raise ValueError("release identity context does not match metadata")
+    release_metadata = ReleaseMetadata(
+        profile=metadata_profile,
+        languages=languages,
+        datasets=datasets,
+        context_length=metadata_context,
+        license=metadata_license,
+        provenance=provenance,
+    )
     canonical_chat = asset_path("templates/chat_template.jinja").read_text(
         encoding="utf-8"
     )
@@ -486,11 +559,12 @@ def validate_release(root: Path) -> dict[str, Any]:
     if not card.startswith("---\n") or "\n---\n" not in card[4:]:
         raise ValueError("model card has invalid frontmatter")
     frontmatter = card.split("---\n", 2)[1]
+    expected_license = metadata_license or "other"
     if f"license: {expected_license}\n" not in frontmatter:
         raise ValueError("model card license does not match the release")
-    if _frontmatter_list(frontmatter, "language", "datasets") != expected_languages:
+    if _frontmatter_list(frontmatter, "language", "datasets") != languages:
         raise ValueError("model card languages do not match the locked profile")
-    if _frontmatter_list(frontmatter, "datasets", "tags") != expected_datasets:
+    if _frontmatter_list(frontmatter, "datasets", "tags") != datasets:
         raise ValueError("model card datasets do not match the locked profile")
     from .build import _render_card
 
@@ -525,6 +599,7 @@ def validate_release(root: Path) -> dict[str, Any]:
         parameter_label=identity["parameter_label"],
         release_date=identity["release_date"],
         context_length=identity["training_context_length"],
+        metadata=release_metadata,
     )
     if card != expected_card:
         raise ValueError("model card does not match the rendered template")
@@ -548,11 +623,27 @@ def _frontmatter_list(frontmatter: str, key: str, next_key: str) -> tuple[str, .
         return ()
     values = []
     for line in block.splitlines():
-        match = re.fullmatch(r'  - "([^"]+)"', line)
-        if match is None:
+        if not line.startswith("  - "):
             raise ValueError(f"model card frontmatter has invalid {key}")
-        values.append(match.group(1))
+        try:
+            value = json.loads(line.removeprefix("  - "))
+        except json.JSONDecodeError as error:
+            raise ValueError(f"model card frontmatter has invalid {key}") from error
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"model card frontmatter has invalid {key}")
+        values.append(value)
     return tuple(values)
+
+
+def _metadata_strings(value: Any, field: str) -> tuple[str, ...]:
+    if not isinstance(value, list) or any(
+        not isinstance(item, str) or not item for item in value
+    ):
+        raise ValueError(f"release metadata {field} must be a list of strings")
+    result = tuple(value)
+    if len(set(result)) != len(result):
+        raise ValueError(f"release metadata {field} contains duplicates")
+    return result
 
 
 __all__ = [

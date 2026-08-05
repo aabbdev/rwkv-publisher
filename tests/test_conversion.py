@@ -169,10 +169,18 @@ def test_build_cli_dispatches_without_publishing(
             "float16",
             "--max-shard-size",
             "1GB",
+            "--config",
+            str(tmp_path / "metadata.toml"),
+            "--profile",
+            "world-v2.8",
+            "--no-input",
             "--json",
         ]
     )
 
     assert captured["dtype"] == "float16"
     assert captured["max_shard_size"] == "1GB"
+    assert captured["metadata_config"] == tmp_path / "metadata.toml"
+    assert captured["metadata_profile"] == "world-v2.8"
+    assert captured["interactive"] is False
     assert json.loads(capsys.readouterr().out)["output"].endswith("/dist")

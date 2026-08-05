@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -9,6 +10,7 @@ from datetime import date
 from pathlib import Path
 from string import Template
 from typing import Any
+from urllib.parse import quote
 
 from ._version import VERSION
 from .assets import (
@@ -21,7 +23,7 @@ from .assets import (
 )
 from .conversion import ConversionResult, convert_into, inspect_checkpoint
 from .manifest import MANIFEST_SCHEMA, inspect_weights, validate_release, write_manifest
-from .profiles import FamilyProfile, load_profiles
+from .metadata import ReleaseMetadata, resolve_release_metadata
 from .runtime_export import write_flat_runtime
 from .source import ResolvedSource, resolve_source
 
@@ -39,6 +41,7 @@ OFFICIAL_ORGANIZATION = "BlinkDL"
 @dataclass(frozen=True)
 class BuildPlan:
     source: ResolvedSource
+    metadata: ReleaseMetadata
     model_name: str | None
     output: Path
     dtype: str
@@ -90,7 +93,13 @@ def _identity(
 
 
 def _yaml(values: tuple[str, ...]) -> str:
-    return "  []" if not values else "\n".join(f'  - "{value}"' for value in values)
+    return (
+        "  []"
+        if not values
+        else "\n".join(
+            f"  - {json.dumps(value, ensure_ascii=False)}" for value in values
+        )
+    )
 
 
 def _source_url(source: ResolvedSource) -> str:
@@ -118,15 +127,6 @@ def _adapt_chat_template(text: str) -> str:
     ).replace("tools | default([])", "tools | default([], true)", 1)
 
 
-def _profile_claims(
-    source: ResolvedSource,
-) -> tuple[FamilyProfile | None, tuple[str, ...], tuple[str, ...]]:
-    if source.profile is None:
-        return None, (), ()
-    family = load_profiles().families[source.profile.family]
-    return family, family.languages, family.datasets
-
-
 def _make_read_only(root: Path) -> None:
     for path in sorted(root.rglob("*"), reverse=True):
         path.chmod(0o555 if path.is_dir() else 0o444)
@@ -140,23 +140,23 @@ def _render_card(
     parameter_label: str,
     release_date: str,
     context_length: int | None,
+    metadata: ReleaseMetadata,
 ) -> str:
     config = conversion.config
-    family, languages, datasets = _profile_claims(source)
-    license_id = source.profile.license if source.profile else "other"
+    license_id = metadata.license or "other"
     model_name = f"RWKV7-{parameter_label}B-{release_date}"
     repo_id = f"{OFFICIAL_ORGANIZATION}/{model_name}"
     return _template("model_card.md.template").substitute(
         license_id=license_id,
         license_badge=(
             '<a href="LICENSE"><img alt="License" '
-            'src="https://img.shields.io/badge/License-Apache--2.0-4c8bf5" /></a>'
-            if source.profile
-            else '<img alt="Weight license not asserted" '
-            'src="https://img.shields.io/badge/Weight%20license-not%20asserted-lightgrey" />'
+            f'src="https://img.shields.io/badge/License-{quote(license_id)}-4c8bf5" /></a>'
+            if metadata.license == "apache-2.0"
+            else '<img alt="Weight license metadata" '
+            f'src="https://img.shields.io/badge/Weight%20license-{quote(license_id)}-lightgrey" />'
         ),
-        languages=_yaml(languages),
-        datasets=_yaml(datasets),
+        languages=_yaml(metadata.languages),
+        datasets=_yaml(metadata.datasets),
         model_name=model_name,
         repo_id=repo_id,
         architecture="Rwkv7ForCausalLM",
@@ -179,6 +179,8 @@ def _render_card(
             if conversion.explicit_cast
             else "source dtype preserved"
         ),
+        metadata_profile=metadata.profile or "none",
+        metadata_provenance=metadata.provenance,
         source_checkpoint_entry=(
             f"[`{source.reference}`]({_source_url(source)})"
             if source.reference
@@ -192,17 +194,31 @@ def _render_card(
             "for evaluation, post-training, and fine-tuning; the included chat "
             "template is a prompt interface, not a claim that the checkpoint is "
             "a safety-aligned assistant."
-            if family is not None
-            else "This is an unregistered checkpoint. The publisher does not "
-            "assert its training corpus, language coverage, or post-training "
-            "status; consult the source owner before use."
+            if source.profile is not None
+            else (
+                "This is an unregistered checkpoint. Language and dataset "
+                f"metadata was explicitly selected via `{metadata.provenance}`; "
+                "the publisher does not independently assert its training corpus "
+                "composition or post-training status."
+                if metadata.languages or metadata.datasets
+                else "This is an unregistered checkpoint. The publisher does not "
+                "assert its training corpus, language coverage, or post-training "
+                "status; consult the source owner before use."
+            )
         ),
         license_statement=(
-            "The model weights and exported inference bundle are released under "
-            f"[{license_id}](LICENSE)."
+            f"The model weights use the locked profile license `{license_id}`. "
+            "The exported inference bundle is licensed separately under "
+            "[Apache-2.0](LICENSE)."
             if source.profile
-            else "The exported inference bundle is licensed under [Apache-2.0](LICENSE). "
-            "This publisher does not assert a license for the unregistered model weights."
+            else (
+                f"The weight license was declared as `{license_id}` by release metadata. "
+                "The exported inference bundle is licensed under [Apache-2.0](LICENSE); "
+                "verify the weight license with the checkpoint source."
+                if metadata.license
+                else "The exported inference bundle is licensed under [Apache-2.0](LICENSE). "
+                "This publisher does not assert a license for the unregistered model weights."
+            )
         ),
     )
 
@@ -215,6 +231,7 @@ def _write_card(
     parameter_label: str,
     release_date: str,
     context_length: int | None,
+    metadata: ReleaseMetadata,
 ) -> None:
     card = _render_card(
         source=source,
@@ -222,6 +239,7 @@ def _write_card(
         parameter_label=parameter_label,
         release_date=release_date,
         context_length=context_length,
+        metadata=metadata,
     )
     (root / "README.md").write_text(card, encoding="utf-8")
 
@@ -251,12 +269,22 @@ def plan_build(
     max_shard_size: str = "5GB",
     source_ref: str | None = None,
     offline: bool = False,
+    metadata_config: Path | None = None,
+    metadata_profile: str | None = None,
+    interactive: bool = False,
 ) -> BuildPlan:
     assets = verify_assets()
     resolved = resolve_source(source, source_ref=source_ref, offline=offline)
+    metadata = resolve_release_metadata(
+        resolved,
+        config_path=metadata_config,
+        profile_override=metadata_profile,
+        interactive=interactive,
+    )
     model_name = resolved.profile.model_name if resolved.profile else None
     return BuildPlan(
         source=resolved,
+        metadata=metadata,
         model_name=model_name,
         output=output.expanduser().resolve(),
         dtype=dtype,
@@ -273,6 +301,9 @@ def build_release(
     max_shard_size: str = "5GB",
     source_ref: str | None = None,
     offline: bool = False,
+    metadata_config: Path | None = None,
+    metadata_profile: str | None = None,
+    interactive: bool = False,
     dry_run: bool = False,
 ) -> dict[str, Any]:
     plan = plan_build(
@@ -282,6 +313,9 @@ def build_release(
         max_shard_size=max_shard_size,
         source_ref=source_ref,
         offline=offline,
+        metadata_config=metadata_config,
+        metadata_profile=metadata_profile,
+        interactive=interactive,
     )
     if dry_run:
         inspection = inspect_checkpoint(
@@ -307,6 +341,14 @@ def build_release(
             "parameter_count": inspection.serialized_parameter_count,
             "tensor_count": inspection.tensor_count,
             "weight_bytes": inspection.weight_bytes,
+            "metadata": {
+                "profile": plan.metadata.profile,
+                "languages": list(plan.metadata.languages),
+                "datasets": list(plan.metadata.datasets),
+                "context_length": plan.metadata.context_length,
+                "license": plan.metadata.license,
+                "provenance": plan.metadata.provenance,
+            },
         }
     plan.output.mkdir(parents=True, exist_ok=True)
     if plan.model_name and (plan.output / plan.model_name).exists():
@@ -337,6 +379,7 @@ def build_release(
         parameter_label, release_date, context_length = _identity(
             plan.source, conversion.serialized_parameter_count
         )
+        context_length = plan.metadata.context_length
         model_name = f"RWKV7-{parameter_label}B-{release_date}"
         destination = plan.output / model_name
         if destination.exists():
@@ -369,6 +412,7 @@ def build_release(
             parameter_label=parameter_label,
             release_date=release_date,
             context_length=context_length,
+            metadata=plan.metadata,
         )
         repo_id = f"{OFFICIAL_ORGANIZATION}/{model_name}"
         runtime = _write_inference(stage)
@@ -393,6 +437,14 @@ def build_release(
             "profile": {
                 "checkpoint": profile.id if profile else None,
                 "family": profile.family if profile else None,
+            },
+            "metadata": {
+                "profile": plan.metadata.profile,
+                "languages": list(plan.metadata.languages),
+                "datasets": list(plan.metadata.datasets),
+                "context_length": plan.metadata.context_length,
+                "license": plan.metadata.license,
+                "provenance": plan.metadata.provenance,
             },
             "identity": {
                 "parameter_label": parameter_label,

@@ -77,6 +77,8 @@ optional TileLang inference implementation are distributed with this release.
 | Training context | `$training_context` |
 | Weight dtype | `$dtype` |
 | Numerical conversion | `$cast_note` |
+| Metadata profile | `$metadata_profile` |
+| Metadata provenance | `$metadata_provenance` |
 | Source checkpoint | $source_checkpoint_entry |
 | Source SHA-256 | `$source_sha256` |
 

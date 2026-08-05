@@ -1,6 +1,6 @@
 {
   "asset_set": "2026.08.06-r1",
-  "combined_sha256": "8218a2bf2126a6591d2a6e7e5303b53a9ac03118507ab9883d6036253d09d152",
+  "combined_sha256": "6d8637e951d8ea83e0ba5bdb70ef0c378f629e4f3aecd1689dd68146807ab8a9",
   "compatibility": {
     "cuda": "12.8",
     "python": "3.12",
@@ -11,8 +11,8 @@
   "files": {
     "profiles.json": {
       "origin": "verified BlinkDL Hub checkpoint metadata",
-      "sha256": "6017c1417b8199685cf275e9dfb0ea68d408ec486552474585fc9aff3433476b",
-      "size_bytes": 2260,
+      "sha256": "9ea5164a3dddeb489e20a9c0e8912594287179c44d83e9907fd47647333fa9a8",
+      "size_bytes": 2383,
       "version": "2026.08.06-r1"
     },
     "runtime/2026.08.06-r1/configuration_rwkv7.py": {

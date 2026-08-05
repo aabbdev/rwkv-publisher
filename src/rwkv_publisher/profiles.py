@@ -13,6 +13,8 @@ class FamilyProfile:
     languages: tuple[str, ...]
     datasets: tuple[str, ...]
     chat_template: str
+    context_length: int | None = None
+    license: str | None = None
 
 
 @dataclass(frozen=True)
@@ -87,9 +89,20 @@ def load_profiles() -> ProfileRegistry:
             languages=_strings(item.get("languages"), f"families.{name}.languages"),
             datasets=_strings(item.get("datasets"), f"families.{name}.datasets"),
             chat_template=str(item.get("chat_template")),
+            context_length=item.get("context_length"),
+            license=item.get("license"),
         )
         for name, item in document["families"].items()
     }
+    for name, profile in families.items():
+        if profile.context_length is not None and (
+            type(profile.context_length) is not int or profile.context_length <= 0
+        ):
+            raise ValueError(f"invalid family context length: {name}")
+        if profile.license is not None and (
+            not isinstance(profile.license, str) or not profile.license
+        ):
+            raise ValueError(f"invalid family license: {name}")
     checkpoints = {}
     for name, item in document["checkpoints"].items():
         profile = CheckpointProfile(id=name, **item)
@@ -99,6 +112,13 @@ def load_profiles() -> ProfileRegistry:
             raise ValueError(
                 f"invalid immutable identity in checkpoint profile: {name}"
             )
+        family = families[profile.family]
+        if family.context_length is not None and (
+            family.context_length != profile.context_length
+        ):
+            raise ValueError(f"family context does not match checkpoint: {name}")
+        if family.license is not None and family.license != profile.license:
+            raise ValueError(f"family license does not match checkpoint: {name}")
         checkpoints[name] = profile
     return ProfileRegistry(families=families, checkpoints=checkpoints)
 

@@ -65,6 +65,9 @@ temporary staging directory.
 --max-shard-size SIZE     logical shard limit (default: 5GB)
 --source-ref OWNER/REPO/PATH
                           immutable provenance for an unregistered local source
+--config FILE             optional metadata-only TOML
+--profile NAME            metadata family for an unregistered checkpoint
+--no-input                disable the interactive profile selector
 --offline                 forbid network access
 --dry-run                 inspect and validate without serializing weights
 --json                    machine-readable output
@@ -72,6 +75,40 @@ temporary staging directory.
 
 An explicit dtype different from the checkpoint is recorded as a numerical cast.
 Mixed or unsupported source dtypes require an explicit choice.
+
+### Optional metadata profiles
+
+Known checkpoints select their locked metadata profile automatically. An unknown
+checkpoint opened from an interactive terminal displays a small profile selector;
+press Enter to publish without language, dataset, training-context, or weight-license
+claims.
+
+Automation never receives a prompt. Use `--no-input`, `--json`, `--profile`, or an
+optional TOML file:
+
+```toml
+schema = 1
+profile = "world-v2.8"
+
+[metadata]
+languages = ["en", "fr"]
+datasets = ["organization/dataset"]
+context_length = 4096
+license = "apache-2.0"
+```
+
+```bash
+rwkv-publisher build model-20260806.pth \
+  --config examples/rwkv-publisher.toml
+```
+
+The TOML intentionally cannot set paths, hashes, dtype, or parameter size.
+`context_length` is documented as training context, never as a recurrent inference
+limit. `license` is a weight-license identifier supplied as metadata; the generated
+runtime remains Apache-2.0. `--profile` overrides the TOML profile. Values that
+conflict with a recognized checkpoint are rejected. A file containing only
+`schema = 1` explicitly selects no claims for an unknown checkpoint and suppresses
+the terminal menu.
 
 ## Publish
 
@@ -154,7 +191,7 @@ source checkout until that release is available.
 ## Integrity model
 
 Publisher assets and official checkpoint profiles are embedded and SHA-256
-locked. The schema-3 manifest is destination-neutral and records source identity,
+locked. The schema-4 manifest is destination-neutral and records source identity,
 dtype behavior, parameter counts, synthesized compatibility tensors, runtime
 provenance, and every released file.
 

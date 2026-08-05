@@ -1,0 +1,97 @@
+# Local project instructions and design workspace
+AGENTS.md
+DESIGN.md
+
+# Python bytecode and interpreter caches
+__pycache__/
+*.py[cod]
+*$py.class
+.python_history
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test, lint, type-check, and coverage caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Packaging and documentation builds
+build/
+dist/
+site/
+wheels/
+*.egg
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Generated model releases
+RWKV7-*B-20??????/
+staged-releases/
+generated-releases/
+.incomplete
+
+# Model checkpoints and binary exports
+*.pth
+*.pt
+*.ckpt
+*.bin
+*.safetensors
+*.onnx
+*.gguf
+
+# Hugging Face and application caches
+.cache/
+.huggingface/
+hf-cache/
+
+# Secrets and local environment configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# Logs, profiling, and temporary files
+*.log
+*.prof
+*.trace
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Node tooling used by optional developer utilities
+node_modules/
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# macOS and Windows metadata
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini

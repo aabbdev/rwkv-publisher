@@ -1,0 +1,21 @@
+# Changelog
+
+## 0.2.0
+
+- Replaced the TOML-based `convert` / `init` / `build` workflow with
+  `rwkv-publisher build SOURCE`.
+- Made `publish RELEASE_DIR` immediate, with `--dry-run` as the explicit
+  simulation mode and optional owner override through `--repo`.
+- Embedded and cryptographically locked the official profiles, vocabulary, chat
+  template, and validated inference runtime.
+- Preserved source dtype by default and recorded every explicit cast and
+  synthesized tensor in one semantic release manifest.
+- Made generated roots native Transformers artifacts with no remote code.
+- Reduced the optional runtime to five files under `inference/`: one generated
+  `runtime.py`, one merged `kernel.py`, the loader, CLI, and requirements. Removed
+  generated compatibility packages, internal module files, duplicated docs, and
+  duplicated license files.
+- Added parent-locked atomic Hub commits and immutable remote verification.
+
+This is an intentional clean break. Version 0.2 does not read `release.toml` and
+does not provide the 0.1 `convert`, `init`, `--config`, or `--execute` interfaces.

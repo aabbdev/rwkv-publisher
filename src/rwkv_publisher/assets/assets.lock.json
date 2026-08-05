@@ -1,0 +1,80 @@
+{
+  "asset_set": "2026.08.06-r1",
+  "combined_sha256": "8218a2bf2126a6591d2a6e7e5303b53a9ac03118507ab9883d6036253d09d152",
+  "compatibility": {
+    "cuda": "12.8",
+    "python": "3.12",
+    "tilelang": "0.1.12",
+    "torch": "2.8.x",
+    "transformers": ">=5.15"
+  },
+  "files": {
+    "profiles.json": {
+      "origin": "verified BlinkDL Hub checkpoint metadata",
+      "sha256": "6017c1417b8199685cf275e9dfb0ea68d408ec486552474585fc9aff3433476b",
+      "size_bytes": 2260,
+      "version": "2026.08.06-r1"
+    },
+    "runtime/2026.08.06-r1/configuration_rwkv7.py": {
+      "origin": "RWKV7_Pytorch/rwkv7_pytorch/configuration_rwkv7.py",
+      "sha256": "60a060199526f5a6c4d5a2436520eed97e9f21f2ea3cb6e6584d9b5fcb6f21f4",
+      "size_bytes": 4088,
+      "version": "2026.08.06-r1"
+    },
+    "runtime/2026.08.06-r1/custom_ops.py": {
+      "origin": "RWKV7_Pytorch/rwkv7_pytorch/custom_ops.py",
+      "sha256": "fb86e5c9dfc9deb5a1be821ce02c3a390ce5c95ff55feded6add2422f0dc3623",
+      "size_bytes": 5669,
+      "version": "2026.08.06-r1"
+    },
+    "runtime/2026.08.06-r1/kernel_dispatch.py": {
+      "origin": "RWKV7_Pytorch/rwkv7_pytorch/kernel_dispatch.py",
+      "sha256": "0290559437016ba4e2c2a26f7c7a0985b6fbab991535b7ae65ba18eb421fa9e1",
+      "size_bytes": 2597,
+      "version": "2026.08.06-r1"
+    },
+    "runtime/2026.08.06-r1/kernel_tilelang_decode.py": {
+      "origin": "RWKV7_Pytorch/rwkv7_pytorch/kernel_tilelang_decode.py",
+      "sha256": "b582151a6d2bd345cc5f87415543370e027c8f943a4dfe57a18300f08560bd73",
+      "size_bytes": 108667,
+      "version": "2026.08.06-r1"
+    },
+    "runtime/2026.08.06-r1/kernel_tilelang_state.py": {
+      "origin": "RWKV7_Pytorch/rwkv7_pytorch/kernel_tilelang_state.py",
+      "sha256": "a3597160cb8d7317151200d05b241af7edcad2928c3731687764d914c28bf21a",
+      "size_bytes": 44434,
+      "version": "2026.08.06-r1"
+    },
+    "runtime/2026.08.06-r1/modeling_rwkv7.py": {
+      "origin": "RWKV7_Pytorch/rwkv7_pytorch/modeling_rwkv7.py",
+      "sha256": "7e1e57a4516efe78a74f971ada0fe58cb71c87102479ed7516b6d3585964ca21",
+      "size_bytes": 82214,
+      "version": "2026.08.06-r1"
+    },
+    "runtime/2026.08.06-r1/state.py": {
+      "origin": "RWKV7_Pytorch/rwkv7_pytorch/state.py",
+      "sha256": "d13d81af6a301a70024494f03b95006bf5f2471ba0b57fd7f1f94bd54f70f2ef",
+      "size_bytes": 27711,
+      "version": "2026.08.06-r1"
+    },
+    "runtime/2026.08.06-r1/tilelang_decode.py": {
+      "origin": "RWKV7_Pytorch/rwkv7_pytorch/tilelang_decode.py",
+      "sha256": "fe63e6332037cacbd0400d82f65fd6f1c282e31d92906c5f34d39eb9e83eb642",
+      "size_bytes": 29189,
+      "version": "2026.08.06-r1"
+    },
+    "templates/chat_template.jinja": {
+      "origin": "RWKV7_Pytorch/chat_template.j2",
+      "sha256": "a418bb6dad28998607fd5e716fec6c88e94221163edd77f142679a62ff3c150c",
+      "size_bytes": 2321,
+      "version": "2026.08.06-r1"
+    },
+    "vocab/rwkv_vocab_v20230424.txt": {
+      "origin": "RWKV7_Pytorch/rwkv_vocab_v20230424.txt",
+      "sha256": "e6dee3d4e31b4d5c40ac99508ac6c701ceef4bed681bf2167ce9a908552bca89",
+      "size_bytes": 1093733,
+      "version": "2026.08.06-r1"
+    }
+  },
+  "schema_version": 1
+}

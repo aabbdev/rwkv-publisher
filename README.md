@@ -1,0 +1,182 @@
+# rwkv-publisher
+
+`rwkv-publisher` turns an original RWKV-7 `.pth` checkpoint into a complete,
+auditable Hugging Face model repository, then publishes it as one verified commit.
+
+The workflow has two commands:
+
+```bash
+rwkv-publisher build /models/RWKV-x070-World-0.1B-v2.8-20241210-ctx4096.pth
+rwkv-publisher publish dist/RWKV7-0.1B-20241210 \
+  --repo OWNER/RWKV7-0.1B-20241210
+```
+
+No project file, manual conversion, vocabulary path, runtime path, hash, parameter
+label, context length, or license flag is required.
+
+## Install
+
+Python 3.12 is required.
+
+```bash
+pip install rwkv-publisher
+hf auth login  # only required for publishing
+```
+
+From this checkout:
+
+```bash
+uv sync
+uv run rwkv-publisher --help
+```
+
+## Build
+
+```bash
+rwkv-publisher build SOURCE
+```
+
+`SOURCE` can be:
+
+- a local `.pth` checkpoint;
+- a registered Hugging Face checkpoint path;
+- a supported Hugging Face repository containing one canonical checkpoint;
+- an HTTPS Hugging Face checkpoint URL.
+
+The build automatically:
+
+1. resolves and verifies the source;
+2. infers and validates the RWKV-7 architecture;
+3. preserves the source floating dtype by default;
+4. writes bounded safetensors shards directly into temporary final staging;
+5. generates the native config, tokenizer, chat template, model card, and optional
+   optimized runtime;
+6. reconstructs and validates every generated artifact;
+7. atomically creates `dist/RWKV7-<size>B-<YYYYMMDD>`.
+
+Existing destinations are never overwritten. Failed builds remove only their own
+temporary staging directory.
+
+### Build options
+
+```text
+--output DIR              release parent directory (default: dist)
+--dtype DTYPE             preserve, float32, float16, or bfloat16
+--max-shard-size SIZE     logical shard limit (default: 5GB)
+--source-ref OWNER/REPO/PATH
+                          immutable provenance for an unregistered local source
+--offline                 forbid network access
+--dry-run                 inspect and validate without serializing weights
+--json                    machine-readable output
+```
+
+An explicit dtype different from the checkpoint is recorded as a numerical cast.
+Mixed or unsupported source dtypes require an explicit choice.
+
+## Publish
+
+Publishing is immediate:
+
+```bash
+rwkv-publisher publish dist/RWKV7-1.5B-20260710 \
+  --repo OWNER/RWKV7-1.5B-20260710
+```
+
+Use `--dry-run` to perform local validation without contacting the Hub:
+
+```bash
+rwkv-publisher publish dist/RWKV7-1.5B-20260710 \
+  --repo OWNER/RWKV7-1.5B-20260710 \
+  --private \
+  --dry-run
+```
+
+The destination basename must equal the release basename; only the owner may
+change. Publication:
+
+- validates local semantics and hashes again;
+- observes and locks the remote parent commit;
+- adds current files and deletes stale paths in one atomic commit;
+- captures the immutable commit SHA;
+- verifies the exact remote tree, LFS objects, sizes, and file hashes.
+
+Credentials come from `hf auth login`; tokens are never command-line arguments.
+
+## Generated repository
+
+The root is a standard native Transformers model repository. It contains no model
+Python files, `auto_map`, or `trust_remote_code` requirement.
+
+```text
+RWKV7-<size>B-<YYYYMMDD>/
+├── README.md
+├── LICENSE
+├── NOTICE
+├── config.json
+├── generation_config.json
+├── chat_template.jinja
+├── model*.safetensors
+├── model.safetensors.index.json  # only when sharded
+├── tokenizer.json
+├── tokenizer_config.json
+├── release-manifest.json
+└── inference/
+    ├── generate.py
+    ├── model_loader.py
+    ├── runtime.py
+    ├── kernel.py
+    └── requirements.txt
+```
+
+The five-file `inference/` directory is optional and self-contained:
+
+- `generate.py` is the chat and prompt CLI;
+- `model_loader.py` streams native shards into the optimized model;
+- `runtime.py` contains the isolated generated Python runtime;
+- `kernel.py` contains the isolated state and decode TileLang namespaces;
+- `requirements.txt` pins the validated runtime dependencies.
+
+The repository-level `LICENSE` and `NOTICE` apply to `inference/`; they are not
+duplicated inside the directory.
+
+Run the optimized interface with:
+
+```bash
+python inference/generate.py --model . --backend auto --interactive
+```
+
+`auto` uses validated exact optimized boundaries and falls back to pure PyTorch
+when TileLang, CUDA, dtype, architecture, or shape support is unavailable.
+
+Native `rwkv7` auto-class registration requires Transformers 5.15 or a current
+source checkout until that release is available.
+
+## Integrity model
+
+Publisher assets and official checkpoint profiles are embedded and SHA-256
+locked. The schema-3 manifest is destination-neutral and records source identity,
+dtype behavior, parameter counts, synthesized compatibility tensors, runtime
+provenance, and every released file.
+
+Validation does not trust editable manifest declarations: it rebuilds the
+tokenizer and optimized runtime from locked assets, rerenders templates, rechecks
+safetensors headers and shard paths, and compares the canonical license and model
+card.
+
+## Development
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run pyright
+uv run pytest
+uv build
+```
+
+Locked assets are updated only through `scripts/update_assets.py`.
+
+## License
+
+The publisher and generated optimized inference runtime are licensed under
+Apache-2.0. A model release reports the weight license proven by its locked source
+profile; unregistered checkpoints do not receive an invented weight-license claim.

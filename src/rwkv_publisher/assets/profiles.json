@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "families": {
+    "g1h": {
+      "chat_template": "rwkv-world",
+      "datasets": [
+        "HuggingFaceFW/fineweb-edu",
+        "mlfoundations/dclm-baseline-1.0",
+        "cerebras/SlimPajama-627B",
+        "EleutherAI/pile",
+        "bigcode/starcoderdata",
+        "oscar-corpus/OSCAR-2301"
+      ],
+      "languages": ["en", "zh", "fr", "es", "de", "pt", "ru", "it", "ja", "ko", "vi", "ar"]
+    },
+    "world-v2.8": {
+      "chat_template": "rwkv-world",
+      "datasets": [
+        "HuggingFaceFW/fineweb-edu",
+        "mlfoundations/dclm-baseline-1.0",
+        "cerebras/SlimPajama-627B",
+        "EleutherAI/pile",
+        "bigcode/starcoderdata",
+        "oscar-corpus/OSCAR-2301"
+      ],
+      "languages": ["en", "zh", "fr", "es", "de", "pt", "ru", "it", "ja", "ko", "vi", "ar"]
+    }
+  },
+  "checkpoints": {
+    "g1h-1.5b-20260710": {
+      "context_length": 10240,
+      "family": "g1h",
+      "filename": "rwkv7-g1h-1.5b-20260710-ctx10240.pth",
+      "hub_repo": "BlinkDL/rwkv7-g1",
+      "hub_revision": "ede85bf8ab2e59aff7d7ca909fbbc73317866d89",
+      "license": "apache-2.0",
+      "parameter_label": "1.5",
+      "release_date": "20260710",
+      "sha256": "737079d81865801fd85e5459488d89a36d5304a524e890244eb83d44f531c89c",
+      "size_bytes": 3055444605
+    },
+    "g1h-7.2b-20260710": {
+      "context_length": 10240,
+      "family": "g1h",
+      "filename": "rwkv7-g1h-7.2b-20260710-ctx10240.pth",
+      "hub_repo": "BlinkDL/rwkv7-g1",
+      "hub_revision": "ede85bf8ab2e59aff7d7ca909fbbc73317866d89",
+      "license": "apache-2.0",
+      "parameter_label": "7.2",
+      "release_date": "20260710",
+      "sha256": "1fe61e5c4b9037ffd4723a11c4de146d99c26bcd89e00a61afa67ef653d215e8",
+      "size_bytes": 14400007869
+    },
+    "world-0.1b-20241210": {
+      "context_length": 4096,
+      "family": "world-v2.8",
+      "filename": "RWKV-x070-World-0.1B-v2.8-20241210-ctx4096.pth",
+      "hub_repo": "BlinkDL/rwkv-7-world",
+      "hub_revision": "2c0ebae3b3a784e690e3d46bf545ecf44deceb10",
+      "license": "apache-2.0",
+      "parameter_label": "0.1",
+      "release_date": "20241210",
+      "sha256": "60c98129b9529963bff2c164b8ab4bd17c19332ae06dc2dcae32aa3a3739295a",
+      "size_bytes": 382195690
+    }
+  }
+}

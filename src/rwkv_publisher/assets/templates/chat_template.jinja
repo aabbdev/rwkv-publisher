@@ -1,0 +1,56 @@
+{%- set add_generation_prompt = add_generation_prompt | default(true) -%}
+{%- set thinking = thinking | default(false) -%}
+{%- set bos_token = bos_token | default('') -%}
+{%- set tools = tools | default([]) -%}
+{%- set ns = namespace(system_prompt='') -%}
+{%- for message in messages -%}
+    {%- if message.role == 'system' -%}
+        {%- set ns.system_prompt = message.content | trim -%}
+    {%- endif -%}
+{%- endfor -%}
+{{- bos_token -}}
+{%- if ns.system_prompt or tools | length > 0 -%}
+{{ 'System: ' }}{{ ns.system_prompt }}
+{%- if tools | length > 0 -%}
+{%- if ns.system_prompt %}{{ '\n' }}{%- endif -%}
+{{ 'Tools:\n' -}}
+{{ tools | tojson }}
+{{ '\nWhen using a tool, return only a compact JSON function call in a ```json block, like {"name":"calculator","arguments":{"expression":"2+2"}}. The `name` field must be top-level, never inside `arguments`. Do not copy the tool schema into arguments. Otherwise answer normally.' }}
+{%- endif -%}
+{{ '\n\n' }}
+{%- endif -%}
+{%- for message in messages -%}
+{%- if message.role == 'user' -%}
+{{ 'User: ' ~ (message.content | trim) ~ '\n\n' }}
+{%- elif message.role == 'assistant' -%}
+{%- set content = message.content | default('', true) | trim -%}
+{{ 'Assistant:' }}
+{%- if message.tool_calls is defined and message.tool_calls | length > 0 -%}
+{%- if content %}{{ ' ' ~ content ~ '\n' }}{%- endif -%}
+{%- for tool_call in message.tool_calls -%}
+    {%- if tool_call.function is defined -%}
+        {%- set name = tool_call.function.name | default('') -%}
+        {%- set args = tool_call.function.arguments | default({}, true) -%}
+    {%- else -%}
+        {%- set name = tool_call.name | default('') -%}
+        {%- set args = tool_call.arguments | default({}, true) -%}
+    {%- endif -%}
+{{ ' ```json\n' -}}
+{{ '{"name": ' }}{{ name | tojson }}{{ ', "arguments": ' }}{% if args is string %}{{ args }}{% else %}{{ args | tojson }}{% endif %}{{ '}\n' -}}
+{{ '```' }}{{ '\n' if not loop.last else '' }}
+{%- endfor -%}
+{%- elif content -%}
+{{ ' ' ~ content }}
+{%- endif -%}
+{{ '\n\n' }}
+{%- elif message.role == 'tool' -%}
+{{ 'User: Function output:\n' ~ (message.content | trim) ~ '\n\n' }}
+{%- endif -%}
+{%- endfor -%}
+{%- if add_generation_prompt -%}
+{%- if thinking -%}
+{{ 'Assistant: <think' }}
+{%- else -%}
+{{ 'Assistant: <think></think' }}
+{%- endif -%}
+{%- endif -%}

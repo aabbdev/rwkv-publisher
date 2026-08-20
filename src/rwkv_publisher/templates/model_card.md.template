@@ -101,10 +101,13 @@ decoding. Use an `attention_mask` for padded batches.
 
 ```python
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedConfig
 
 model_id = "$repo_id"
-tokenizer = AutoTokenizer.from_pretrained(model_id)
+tokenizer = AutoTokenizer.from_pretrained(
+    model_id,
+    config=PreTrainedConfig(),
+)
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
     trust_remote_code=True,
@@ -168,6 +171,8 @@ The model root contains one self-contained tokenizer artifact: `tokenizer.json`.
 Textual `vocab.json` and `rwkv_vocab_v20230424.txt` files are intentionally omitted
 because they would duplicate the tokenizer used by Transformers. The tokenizer is
 loaded natively as `PreTrainedTokenizerFast` and never executes remote Python code.
+The explicit generic config prevents `AutoTokenizer` from probing the remote model
+configuration and emitting a harmless model-type fallback warning.
 
 ## Intended use and limitations
 

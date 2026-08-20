@@ -112,7 +112,13 @@ def test_bundled_model_code_loads_all_remote_auto_classes(
 import sys
 
 import torch
-from transformers import AutoConfig, AutoModel, AutoModelForCausalLM, AutoTokenizer
+from transformers import (
+    AutoConfig,
+    AutoModel,
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    PreTrainedConfig,
+)
 
 root = sys.argv[1]
 common = {
@@ -122,7 +128,11 @@ common = {
 config = AutoConfig.from_pretrained(root, **common)
 base = AutoModel.from_pretrained(root, **common)
 causal = AutoModelForCausalLM.from_pretrained(root, **common)
-tokenizer = AutoTokenizer.from_pretrained(root, local_files_only=True)
+tokenizer = AutoTokenizer.from_pretrained(
+    root,
+    config=PreTrainedConfig(),
+    local_files_only=True,
+)
 
 assert config.__class__.__name__ == "Rwkv7Config"
 assert base.__class__.__name__ == "Rwkv7Model"
@@ -158,6 +168,7 @@ assert generated.shape[1] == input_ids.shape[1] + 1
         text=True,
     )
     assert result.returncode == 0, result.stderr
+    assert "model of type `rwkv7`" not in result.stderr
     assert not list(built_release.rglob("__pycache__"))
 
 

@@ -114,9 +114,16 @@ def _loading_example(repo_id: str, dtype: str) -> str:
     return (
         "```python\n"
         "import torch\n"
-        "from transformers import AutoModelForCausalLM, AutoTokenizer\n\n"
+        "from transformers import (\n"
+        "    AutoModelForCausalLM,\n"
+        "    AutoTokenizer,\n"
+        "    PreTrainedConfig,\n"
+        ")\n\n"
         f'model_id = "{repo_id}"\n'
-        "tokenizer = AutoTokenizer.from_pretrained(model_id)\n"
+        "tokenizer = AutoTokenizer.from_pretrained(\n"
+        "    model_id,\n"
+        "    config=PreTrainedConfig(),\n"
+        ")\n"
         "model = AutoModelForCausalLM.from_pretrained(\n"
         "    model_id,\n"
         "    trust_remote_code=True,\n"

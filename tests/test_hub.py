@@ -19,7 +19,7 @@ def _release(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
     readme.write_text("# BlinkDL/RWKV7-0.1B-20241210\n", encoding="utf-8")
     config.write_text("{}\n", encoding="utf-8")
     manifest = {
-        "schema_version": 6,
+        "schema_version": 7,
         "profile": {"checkpoint": "test"},
         "source": {"reference": "BlinkDL/source/model.pth"},
         "files": {

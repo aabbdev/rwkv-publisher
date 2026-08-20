@@ -15,6 +15,8 @@
   the Fast tokenizer remains native.
 - Removed the spurious chat BOS token and reconstructed the partial RWKV thinking
   prefix before displaying or retaining assistant replies.
+- Closed the non-thinking generation prefix as `<think></think>\n` so ordinary
+  completions begin directly with answer text.
 - Reduced the optional runtime to five files under `inference/`: one generated
   `runtime.py`, one merged `kernel.py`, the loader, CLI, and requirements. Removed
   generated compatibility packages, internal module files, duplicated docs, and

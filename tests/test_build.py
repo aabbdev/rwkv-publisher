@@ -78,7 +78,7 @@ def built_release(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def test_build_produces_native_flat_valid_release(built_release: Path) -> None:
     manifest = validate_release(built_release)
-    assert manifest["schema_version"] == 6
+    assert manifest["schema_version"] == 7
     assert manifest["identity"]["parameter_label"] == "0.1"
     assert manifest["conversion"]["source_float_dtypes"] == ["float32"]
     assert manifest["conversion"]["target_float_dtypes"] == ["float32"]
@@ -108,7 +108,7 @@ def test_build_produces_native_flat_valid_release(built_release: Path) -> None:
         add_generation_prompt=True,
         thinking=False,
     )
-    assert prompt == "User: hello\n\nAssistant: <think></think"
+    assert prompt == "User: hello\n\nAssistant: <think></think>\n"
     prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
     assert prompt_ids[0] != 0
     assert (built_release.stat().st_mode & 0o222) == 0

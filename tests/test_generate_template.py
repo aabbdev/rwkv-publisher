@@ -150,7 +150,7 @@ def test_generate_template_uses_chat_and_rwkv_stops(monkeypatch: Any) -> None:
 def test_completion_reconstructs_thinking_prefix(monkeypatch: Any) -> None:
     module = _load_template_module(monkeypatch)
 
-    assert module._assistant_content(">\nanswer", thinking=False) == "answer"
+    assert module._assistant_content("answer", thinking=False) == "answer"
     assert (
         module._assistant_content(">\nprivate reasoning</think>\nanswer", thinking=True)
         == "<think>\nprivate reasoning</think>\nanswer"
@@ -166,11 +166,11 @@ def test_completion_reconstructs_thinking_prefix(monkeypatch: Any) -> None:
         == "<think>\nunfinished reasoning\n</think>"
     )
     assert (
-        module._assistant_content(">\nExplain <think> tags", thinking=False)
+        module._assistant_content("Explain <think> tags", thinking=False)
         == "Explain <think> tags"
     )
     assert (
-        module._assistant_content(">\n<think> tags are literal", thinking=False)
+        module._assistant_content("<think> tags are literal", thinking=False)
         == "<think> tags are literal"
     )
 
@@ -276,7 +276,7 @@ def test_interactive_clear_resets_history(monkeypatch: Any) -> None:
 def test_interactive_replays_clean_assistant_content(monkeypatch: Any) -> None:
     module = _load_template_module(monkeypatch)
     prompts = iter(["first", "second", "/exit"])
-    raw_completions = iter([">\nfirst answer", ">\nsecond answer"])
+    raw_completions = iter(["first answer", "second answer"])
     monkeypatch.setattr("builtins.input", lambda _: next(prompts))
     seen: list[list[dict[str, str]]] = []
 

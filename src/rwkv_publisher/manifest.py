@@ -33,7 +33,7 @@ from .runtime_export import build_flat_runtime
 from .source import ResolvedSource
 
 MANIFEST_NAME = "release-manifest.json"
-MANIFEST_SCHEMA = 6
+MANIFEST_SCHEMA = 7
 DTYPE_BYTES = {
     "BOOL": 1,
     "U8": 1,

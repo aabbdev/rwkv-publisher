@@ -1,6 +1,6 @@
 {
   "asset_set": "2026.08.06-r1",
-  "combined_sha256": "3c3f6237fcd9dc2ec8ba0b61b626ef72924ebe42bdc6dc49e21a5bfeb19bb96b",
+  "combined_sha256": "5a31129dcca03f5ecd55157e1561af64aaf35046c77e253fc4d6214b95ab8ede",
   "compatibility": {
     "cuda": "12.8",
     "python": "3.12",
@@ -76,9 +76,9 @@
       "version": "2026.08.06-r1"
     },
     "templates/chat_template.jinja": {
-      "origin": "RWKV7_Pytorch/chat_template.j2",
-      "sha256": "a418bb6dad28998607fd5e716fec6c88e94221163edd77f142679a62ff3c150c",
-      "size_bytes": 2321,
+      "origin": "RWKV7_Pytorch/chat_template.j2 with complete non-thinking closing tag",
+      "sha256": "bbc75073688d0dc8904e0c1b7a263e68c68cb5eb601d9f96ea0efc5a139c190d",
+      "size_bytes": 2324,
       "version": "2026.08.06-r1"
     },
     "vocab/rwkv_vocab_v20230424.txt": {

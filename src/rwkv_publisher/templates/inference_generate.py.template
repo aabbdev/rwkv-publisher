@@ -59,7 +59,7 @@ class StopOnText(StoppingCriteria):
 def _assistant_content(
     completion: str, thinking: bool, *, close_incomplete: bool = False
 ) -> str:
-    prefix = "<think" if thinking else "<think></think"
+    prefix = "<think" if thinking else "<think></think>\n"
     reply = prefix + completion
     thinking_block = THINK_RE.match(reply)
     if thinking:

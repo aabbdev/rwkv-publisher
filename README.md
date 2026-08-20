@@ -197,7 +197,7 @@ remote-code trust.
 ## Integrity model
 
 Publisher assets and official checkpoint profiles are embedded and SHA-256
-locked. The schema-6 manifest is destination-neutral and records source identity,
+locked. The schema-7 manifest is destination-neutral and records source identity,
 dtype behavior, parameter counts, synthesized compatibility tensors, model-code
 and runtime provenance, and every released file.
 

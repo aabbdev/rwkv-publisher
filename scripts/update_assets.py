@@ -20,7 +20,7 @@ def origin(relative: str) -> str:
     if relative == "vocab/rwkv_vocab_v20230424.txt":
         return "RWKV7_Pytorch/rwkv_vocab_v20230424.txt"
     if relative == "templates/chat_template.jinja":
-        return "RWKV7_Pytorch/chat_template.j2"
+        return "RWKV7_Pytorch/chat_template.j2 with complete non-thinking closing tag"
     if relative.startswith("model_code/"):
         if relative not in {
             f"model_code/{filename}" for filename in MODEL_CODE_FILENAMES

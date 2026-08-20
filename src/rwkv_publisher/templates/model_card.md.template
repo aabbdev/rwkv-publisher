@@ -110,7 +110,7 @@ THINK_RE = re.compile(r"\A<think>?\s*(.*?)\s*</think>?", re.DOTALL)
 
 
 def assistant_content(completion, thinking, *, close_incomplete=False):
-    prefix = "<think" if thinking else "<think></think"
+    prefix = "<think" if thinking else "<think></think>\n"
     reply = prefix + completion
     thinking_block = THINK_RE.match(reply)
     if thinking:
@@ -169,10 +169,11 @@ print(
 ```
 
 Set `thinking=True` for the RWKV thinking prefix. The intentional generation
-prefixes are `Assistant: <think></think` and `Assistant: <think`; do not append a
-closing `>` to them. The post-processing above reconstructs that prefix before
-removing an empty thinking block or preserving an enabled one. If generation hits
-the token limit inside thinking, it closes the displayed block before returning it.
+prefixes are `Assistant: <think></think>` followed by a newline and
+`Assistant: <think`. Only the enabled thinking prefix intentionally leaves its opening
+tag incomplete. The post-processing above reconstructs that prefix before removing an
+empty thinking block or preserving an enabled one. If generation hits the token limit
+inside thinking, it closes the displayed block before returning it.
 Reference stops are token ID `0` and `\n\nUser:`.
 
 Strip trailing spaces from user input. The official RWKV prompt guide is available

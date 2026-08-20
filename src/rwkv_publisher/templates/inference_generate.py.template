@@ -39,6 +39,7 @@ class StopOnText(StoppingCriteria):
         self.tokenizer = tokenizer
         self.prompt_length = prompt_length
         self.stop_text = stop_text
+        self.matched = False
 
     def __call__(
         self,
@@ -51,13 +52,20 @@ class StopOnText(StoppingCriteria):
             input_ids[0, self.prompt_length :],
             skip_special_tokens=False,
         )
-        return self.stop_text in completion
+        self.matched = self.stop_text in completion
+        return self.matched
 
 
-def _assistant_content(completion: str, thinking: bool) -> str:
+def _assistant_content(
+    completion: str, thinking: bool, *, close_incomplete: bool = False
+) -> str:
     prefix = "<think" if thinking else "<think></think"
     reply = prefix + completion
     thinking_block = THINK_RE.match(reply)
+    if thinking:
+        if thinking_block is not None or not close_incomplete:
+            return reply.strip()
+        return f"{reply.rstrip()}\n</think>".strip()
     return "" if thinking_block is None else reply[thinking_block.end() :].strip()
 
 
@@ -92,6 +100,7 @@ def generate_completion(
 ) -> str:
     input_ids = _prompt_ids(tokenizer, messages, thinking).to(device)
     prompt_length = input_ids.shape[1]
+    stop_on_text = StopOnText(tokenizer, prompt_length, STOP_TEXT)
     generation: dict[str, Any] = {
         "input_ids": input_ids,
         "attention_mask": torch.ones_like(input_ids),
@@ -99,9 +108,7 @@ def generate_completion(
         "do_sample": temperature > 0,
         "eos_token_id": 0,
         "pad_token_id": 0,
-        "stopping_criteria": StoppingCriteriaList(
-            [StopOnText(tokenizer, prompt_length, STOP_TEXT)]
-        ),
+        "stopping_criteria": StoppingCriteriaList([stop_on_text]),
     }
     if temperature > 0:
         generation["temperature"] = temperature
@@ -111,7 +118,14 @@ def generate_completion(
     completion = tokenizer.decode(completion_ids, skip_special_tokens=True)
     if STOP_TEXT in completion:
         completion = completion.split(STOP_TEXT, 1)[0]
-    return _assistant_content(completion, thinking)
+    reached_token_limit = (
+        completion_ids.shape[0] >= max_new_tokens and not stop_on_text.matched
+    )
+    return _assistant_content(
+        completion,
+        thinking,
+        close_incomplete=reached_token_limit,
+    )
 
 
 def _interactive(

@@ -138,7 +138,7 @@ def test_generate_template_uses_chat_and_rwkv_stops(monkeypatch: Any) -> None:
         thinking=True,
     )
 
-    assert completion == "answer"
+    assert completion == "<think>\nplan</think>\nanswer"
     assert tokenizer.chat_calls[0]["add_generation_prompt"] is True
     assert tokenizer.chat_calls[0]["thinking"] is True
     assert model.kwargs["eos_token_id"] == 0
@@ -153,9 +153,18 @@ def test_completion_reconstructs_thinking_prefix(monkeypatch: Any) -> None:
     assert module._assistant_content(">\nanswer", thinking=False) == "answer"
     assert (
         module._assistant_content(">\nprivate reasoning</think>\nanswer", thinking=True)
-        == "answer"
+        == "<think>\nprivate reasoning</think>\nanswer"
     )
-    assert module._assistant_content(">\nunfinished reasoning", thinking=True) == ""
+    assert (
+        module._assistant_content(">\nunfinished reasoning", thinking=True)
+        == "<think>\nunfinished reasoning"
+    )
+    assert (
+        module._assistant_content(
+            ">\nunfinished reasoning", thinking=True, close_incomplete=True
+        )
+        == "<think>\nunfinished reasoning\n</think>"
+    )
     assert (
         module._assistant_content(">\nExplain <think> tags", thinking=False)
         == "Explain <think> tags"
@@ -164,6 +173,28 @@ def test_completion_reconstructs_thinking_prefix(monkeypatch: Any) -> None:
         module._assistant_content(">\n<think> tags are literal", thinking=False)
         == "<think> tags are literal"
     )
+
+
+def test_generation_closes_thinking_only_at_token_limit(monkeypatch: Any) -> None:
+    module = _load_template_module(monkeypatch)
+
+    class BudgetModel:
+        def generate(self, **kwargs: Any):
+            count = kwargs["max_new_tokens"]
+            return FakeTensor([[11, 12, *([21] * count)]])
+
+    completion = module.generate_completion(
+        BudgetModel(),
+        FakeTokenizer(),
+        [{"role": "user", "content": "hello"}],
+        device="cpu",
+        max_new_tokens=3,
+        temperature=0,
+        top_p=0.5,
+        thinking=True,
+    )
+
+    assert completion == "<think>\npartial\n</think>"
 
 
 def test_stop_criterion_detects_split_stop_text(monkeypatch: Any) -> None:

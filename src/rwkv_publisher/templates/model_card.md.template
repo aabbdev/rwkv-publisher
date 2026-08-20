@@ -109,10 +109,14 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedConfig
 THINK_RE = re.compile(r"\A<think>?\s*(.*?)\s*</think>?", re.DOTALL)
 
 
-def assistant_content(completion, thinking):
+def assistant_content(completion, thinking, *, close_incomplete=False):
     prefix = "<think" if thinking else "<think></think"
     reply = prefix + completion
     thinking_block = THINK_RE.match(reply)
+    if thinking:
+        if thinking_block is not None or not close_incomplete:
+            return reply.strip()
+        return f"{reply.rstrip()}\n</think>".strip()
     return "" if thinking_block is None else reply[thinking_block.end():].strip()
 
 model_id = "$repo_id"
@@ -128,6 +132,7 @@ model = AutoModelForCausalLM.from_pretrained(
 
 messages = [{"role": "user", "content": "Explain why RWKV uses constant state."}]
 thinking = False
+max_new_tokens = 256
 inputs = tokenizer.apply_chat_template(
     messages,
     tokenize=True,
@@ -139,7 +144,7 @@ inputs = tokenizer.apply_chat_template(
 
 output = model.generate(
     **inputs,
-    max_new_tokens=256,
+    max_new_tokens=max_new_tokens,
     do_sample=True,
     temperature=1.0,
     top_p=0.5,
@@ -153,13 +158,22 @@ completion = tokenizer.decode(
     skip_special_tokens=True,
 )
 completion = completion.split("\n\nUser:", 1)[0]
-print(assistant_content(completion, thinking))
+reached_token_limit = output.shape[1] - inputs["input_ids"].shape[1] >= max_new_tokens
+print(
+    assistant_content(
+        completion,
+        thinking,
+        close_incomplete=reached_token_limit,
+    )
+)
 ```
 
 Set `thinking=True` for the RWKV thinking prefix. The intentional generation
 prefixes are `Assistant: <think></think` and `Assistant: <think`; do not append a
 closing `>` to them. The post-processing above reconstructs that prefix before
-removing the thinking block. Reference stops are token ID `0` and `\n\nUser:`.
+removing an empty thinking block or preserving an enabled one. If generation hits
+the token limit inside thinking, it closes the displayed block before returning it.
+Reference stops are token ID `0` and `\n\nUser:`.
 
 Strip trailing spaces from user input. The official RWKV prompt guide is available
 in [`RWKV7-G1x-templates.txt`](https://github.com/BlinkDL/RWKV-LM/blob/main/RWKV-v7/RWKV7-G1x-templates.txt).

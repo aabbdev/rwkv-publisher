@@ -599,4 +599,4 @@ def test_model_card_separates_weight_and_runtime_licenses(tmp_path: Path) -> Non
     assert "model.generate(\n    **inputs," in card
     assert 'inputs["input_ids"].shape[1]' in card
     assert 'stop_strings=["\\n\\nUser:"]' in card
-    assert "assistant_content(completion, thinking)" in card
+    assert "close_incomplete=reached_token_limit" in card

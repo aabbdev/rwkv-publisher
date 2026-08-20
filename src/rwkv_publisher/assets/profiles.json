@@ -1,6 +1,20 @@
 {
   "schema_version": 1,
   "families": {
+    "g1i": {
+      "chat_template": "rwkv-world",
+      "context_length": 16384,
+      "datasets": [
+        "HuggingFaceFW/fineweb-edu",
+        "mlfoundations/dclm-baseline-1.0",
+        "cerebras/SlimPajama-627B",
+        "EleutherAI/pile",
+        "bigcode/starcoderdata",
+        "oscar-corpus/OSCAR-2301"
+      ],
+      "languages": ["en", "zh", "fr", "es", "de", "pt", "ru", "it", "ja", "ko", "vi", "ar"],
+      "license": "apache-2.0"
+    },
     "g1h": {
       "chat_template": "rwkv-world",
       "context_length": 10240,
@@ -31,6 +45,18 @@
     }
   },
   "checkpoints": {
+    "g1i-1.5b-20260805": {
+      "context_length": 16384,
+      "family": "g1i",
+      "filename": "rwkv7-g1i-1.5b-20260805-ctx16384.pth",
+      "hub_repo": "BlinkDL/rwkv7-g1",
+      "hub_revision": "ede85bf8ab2e59aff7d7ca909fbbc73317866d89",
+      "license": "apache-2.0",
+      "parameter_label": "1.5",
+      "release_date": "20260805",
+      "sha256": "32ef7b5bf4dc8bde843cf26dfad809a1f527e2e76a9e790e7d406e71bcd785da",
+      "size_bytes": 3055444605
+    },
     "g1h-1.5b-20260710": {
       "context_length": 10240,
       "family": "g1h",

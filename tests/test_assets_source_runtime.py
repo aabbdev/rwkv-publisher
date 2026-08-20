@@ -34,6 +34,10 @@ def test_asset_lock_and_official_profiles_are_complete() -> None:
         profile.model_name: (profile.sha256, profile.size_bytes)
         for profile in profiles.values()
     } == {
+        "RWKV7-1.5B-20260805": (
+            "32ef7b5bf4dc8bde843cf26dfad809a1f527e2e76a9e790e7d406e71bcd785da",
+            3_055_444_605,
+        ),
         "RWKV7-0.1B-20241210": (
             "60c98129b9529963bff2c164b8ab4bd17c19332ae06dc2dcae32aa3a3739295a",
             382_195_690,

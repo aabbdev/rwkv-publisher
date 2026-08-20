@@ -33,7 +33,7 @@ from .runtime_export import build_flat_runtime
 from .source import ResolvedSource
 
 MANIFEST_NAME = "release-manifest.json"
-MANIFEST_SCHEMA = 5
+MANIFEST_SCHEMA = 6
 DTYPE_BYTES = {
     "BOOL": 1,
     "U8": 1,
@@ -348,7 +348,7 @@ def validate_release(root: Path) -> dict[str, Any]:
         (root / "tokenizer_config.json").read_text(encoding="utf-8")
     )
     if tokenizer_config.get("tokenizer_class") != "PreTrainedTokenizerFast" or any(
-        key in tokenizer_config for key in ("auto_map", "model_max_length")
+        key in tokenizer_config for key in ("auto_map", "bos_token", "model_max_length")
     ):
         raise ValueError("tokenizer config is not native and position-neutral")
     tokenizer = Tokenizer.from_file(str(root / "tokenizer.json"))

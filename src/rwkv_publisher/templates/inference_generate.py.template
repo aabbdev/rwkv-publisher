@@ -31,6 +31,7 @@ DTYPES = {
     "float32": torch.float32,
 }
 STOP_TEXT = "\n\nUser:"
+THINK_RE = re.compile(r"\A<think>?\s*(.*?)\s*</think>?", re.DOTALL)
 
 
 class StopOnText(StoppingCriteria):
@@ -51,6 +52,13 @@ class StopOnText(StoppingCriteria):
             skip_special_tokens=False,
         )
         return self.stop_text in completion
+
+
+def _assistant_content(completion: str, thinking: bool) -> str:
+    prefix = "<think" if thinking else "<think></think"
+    reply = prefix + completion
+    thinking_block = THINK_RE.match(reply)
+    return "" if thinking_block is None else reply[thinking_block.end() :].strip()
 
 
 def _prompt_ids(tokenizer: Any, messages: list[dict[str, str]], thinking: bool):
@@ -103,7 +111,7 @@ def generate_completion(
     completion = tokenizer.decode(completion_ids, skip_special_tokens=True)
     if STOP_TEXT in completion:
         completion = completion.split(STOP_TEXT, 1)[0]
-    return completion.strip()
+    return _assistant_content(completion, thinking)
 
 
 def _interactive(

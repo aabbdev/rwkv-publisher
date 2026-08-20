@@ -100,8 +100,20 @@ decoding. Use an `attention_mask` for padded batches.
 ## Chat quickstart
 
 ```python
+import re
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedConfig
+
+
+THINK_RE = re.compile(r"\A<think>?\s*(.*?)\s*</think>?", re.DOTALL)
+
+
+def assistant_content(completion, thinking):
+    prefix = "<think" if thinking else "<think></think"
+    reply = prefix + completion
+    thinking_block = THINK_RE.match(reply)
+    return "" if thinking_block is None else reply[thinking_block.end():].strip()
 
 model_id = "$repo_id"
 tokenizer = AutoTokenizer.from_pretrained(
@@ -115,29 +127,39 @@ model = AutoModelForCausalLM.from_pretrained(
 ).to("cuda")
 
 messages = [{"role": "user", "content": "Explain why RWKV uses constant state."}]
-input_ids = tokenizer.apply_chat_template(
+thinking = False
+inputs = tokenizer.apply_chat_template(
     messages,
     tokenize=True,
     add_generation_prompt=True,
-    thinking=False,
+    thinking=thinking,
+    return_dict=True,
     return_tensors="pt",
 ).to(model.device)
 
 output = model.generate(
-    input_ids,
+    **inputs,
     max_new_tokens=256,
     do_sample=True,
     temperature=1.0,
     top_p=0.5,
     eos_token_id=0,
     pad_token_id=0,
+    stop_strings=["\n\nUser:"],
+    tokenizer=tokenizer,
 )
-print(tokenizer.decode(output[0, input_ids.shape[1]:], skip_special_tokens=True))
+completion = tokenizer.decode(
+    output[0, inputs["input_ids"].shape[1]:],
+    skip_special_tokens=True,
+)
+completion = completion.split("\n\nUser:", 1)[0]
+print(assistant_content(completion, thinking))
 ```
 
 Set `thinking=True` for the RWKV thinking prefix. The intentional generation
 prefixes are `Assistant: <think></think` and `Assistant: <think`; do not append a
-closing `>` to them. Reference stops are token ID `0` and `\n\nUser:`.
+closing `>` to them. The post-processing above reconstructs that prefix before
+removing the thinking block. Reference stops are token ID `0` and `\n\nUser:`.
 
 Strip trailing spaces from user input. The official RWKV prompt guide is available
 in [`RWKV7-G1x-templates.txt`](https://github.com/BlinkDL/RWKV-LM/blob/main/RWKV-v7/RWKV7-G1x-templates.txt).

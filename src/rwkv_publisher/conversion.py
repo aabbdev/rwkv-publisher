@@ -373,7 +373,6 @@ def _write_tokenizer(output_dir: Path, vocab_file: Path, vocab_size: int) -> Non
                     }
                 },
                 "backend": "tokenizers",
-                "bos_token": END_TOKEN,
                 "eos_token": END_TOKEN,
                 "pad_token": END_TOKEN,
                 "padding_side": "left",

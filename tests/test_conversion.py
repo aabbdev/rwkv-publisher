@@ -98,11 +98,13 @@ def test_convert_checkpoint_writes_native_sharded_model(tmp_path: Path) -> None:
         (output / "tokenizer_config.json").read_text(encoding="utf-8")
     )
     assert "auto_map" not in tokenizer_config
+    assert "bos_token" not in tokenizer_config
     tokenizer = AutoTokenizer.from_pretrained(
         output, config=PreTrainedConfig(), local_files_only=True
     )
     assert isinstance(tokenizer, PreTrainedTokenizerFast)
     assert tokenizer.is_fast
+    assert tokenizer.bos_token is None
     assert tokenizer.encode("abc", add_special_tokens=False) == [258]
 
 

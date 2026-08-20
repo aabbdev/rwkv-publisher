@@ -57,8 +57,8 @@ class FakeTokenizer:
         del kwargs
         values = token_ids.tolist() if hasattr(token_ids, "tolist") else list(token_ids)
         if values == [21, 22, 0]:
-            return "answer\n\nUser:"
-        return "partial\n\nUser:" if 22 in values else "partial"
+            return ">\nplan</think>\nanswer\n\nUser:"
+        return ">\npartial\n\nUser:" if 22 in values else ">\npartial"
 
 
 class FakeModel:
@@ -147,6 +147,25 @@ def test_generate_template_uses_chat_and_rwkv_stops(monkeypatch: Any) -> None:
     assert model.kwargs["top_p"] == 0.5
 
 
+def test_completion_reconstructs_thinking_prefix(monkeypatch: Any) -> None:
+    module = _load_template_module(monkeypatch)
+
+    assert module._assistant_content(">\nanswer", thinking=False) == "answer"
+    assert (
+        module._assistant_content(">\nprivate reasoning</think>\nanswer", thinking=True)
+        == "answer"
+    )
+    assert module._assistant_content(">\nunfinished reasoning", thinking=True) == ""
+    assert (
+        module._assistant_content(">\nExplain <think> tags", thinking=False)
+        == "Explain <think> tags"
+    )
+    assert (
+        module._assistant_content(">\n<think> tags are literal", thinking=False)
+        == "<think> tags are literal"
+    )
+
+
 def test_stop_criterion_detects_split_stop_text(monkeypatch: Any) -> None:
     module = _load_template_module(monkeypatch)
     criterion = module.StopOnText(FakeTokenizer(), 2, "\n\nUser:")
@@ -220,6 +239,45 @@ def test_interactive_clear_resets_history(monkeypatch: Any) -> None:
     assert seen == [
         [{"role": "user", "content": "hello"}],
         [{"role": "user", "content": "again"}],
+    ]
+
+
+def test_interactive_replays_clean_assistant_content(monkeypatch: Any) -> None:
+    module = _load_template_module(monkeypatch)
+    prompts = iter(["first", "second", "/exit"])
+    raw_completions = iter([">\nfirst answer", ">\nsecond answer"])
+    monkeypatch.setattr("builtins.input", lambda _: next(prompts))
+    seen: list[list[dict[str, str]]] = []
+
+    def fake_generate(
+        model: Any,
+        tokenizer: Any,
+        messages: list[dict[str, str]],
+        **kwargs: Any,
+    ) -> str:
+        del model, tokenizer
+        seen.append([dict(message) for message in messages])
+        return module._assistant_content(
+            next(raw_completions), thinking=kwargs["thinking"]
+        )
+
+    module.__dict__["generate_completion"] = fake_generate
+    args = types.SimpleNamespace(
+        device="cuda",
+        max_new_tokens=8,
+        temperature=1.0,
+        top_p=0.5,
+        thinking=False,
+    )
+    module._interactive(FakeModel(), FakeTokenizer(), args)
+
+    assert seen == [
+        [{"role": "user", "content": "first"}],
+        [
+            {"role": "user", "content": "first"},
+            {"role": "assistant", "content": "first answer"},
+            {"role": "user", "content": "second"},
+        ],
     ]
 
 

@@ -78,7 +78,7 @@ def built_release(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def test_build_produces_native_flat_valid_release(built_release: Path) -> None:
     manifest = validate_release(built_release)
-    assert manifest["schema_version"] == 5
+    assert manifest["schema_version"] == 6
     assert manifest["identity"]["parameter_label"] == "0.1"
     assert manifest["conversion"]["source_float_dtypes"] == ["float32"]
     assert manifest["conversion"]["target_float_dtypes"] == ["float32"]
@@ -101,6 +101,16 @@ def test_build_produces_native_flat_valid_release(built_release: Path) -> None:
         built_release, config=PreTrainedConfig(), local_files_only=True
     )
     assert tokenizer.encode("abc", add_special_tokens=False) == [258]
+    assert tokenizer.bos_token is None
+    prompt = tokenizer.apply_chat_template(
+        [{"role": "user", "content": "hello"}],
+        tokenize=False,
+        add_generation_prompt=True,
+        thinking=False,
+    )
+    assert prompt == "User: hello\n\nAssistant: <think></think"
+    prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
+    assert prompt_ids[0] != 0
     assert (built_release.stat().st_mode & 0o222) == 0
     assert (built_release / "README.md").stat().st_mode & 0o222 == 0
 
@@ -585,3 +595,8 @@ def test_model_card_separates_weight_and_runtime_licenses(tmp_path: Path) -> Non
     assert "inference bundle is licensed separately" in card
     assert "[Apache-2.0](LICENSE)" in card
     assert "[mit](LICENSE)" not in card
+    assert "return_dict=True" in card
+    assert "model.generate(\n    **inputs," in card
+    assert 'inputs["input_ids"].shape[1]' in card
+    assert 'stop_strings=["\\n\\nUser:"]' in card
+    assert "assistant_content(completion, thinking)" in card

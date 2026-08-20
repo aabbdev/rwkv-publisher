@@ -24,6 +24,7 @@ from .assets import (
 from .conversion import ConversionResult, convert_into, inspect_checkpoint
 from .manifest import MANIFEST_SCHEMA, inspect_weights, validate_release, write_manifest
 from .metadata import ReleaseMetadata, resolve_release_metadata
+from .remote_code import build_model_code, model_code_provenance
 from .runtime_export import write_flat_runtime
 from .source import ResolvedSource, resolve_source
 
@@ -116,7 +117,11 @@ def _loading_example(repo_id: str, dtype: str) -> str:
         "from transformers import AutoModelForCausalLM, AutoTokenizer\n\n"
         f'model_id = "{repo_id}"\n'
         "tokenizer = AutoTokenizer.from_pretrained(model_id)\n"
-        f"model = AutoModelForCausalLM.from_pretrained(model_id, dtype=torch.{dtype})\n"
+        "model = AutoModelForCausalLM.from_pretrained(\n"
+        "    model_id,\n"
+        "    trust_remote_code=True,\n"
+        f"    dtype=torch.{dtype},\n"
+        ")\n"
         "```"
     )
 
@@ -402,6 +407,8 @@ def build_release(
         shutil.copy2(canonical_license_path(), stage / "LICENSE")
         stage.joinpath("NOTICE").write_text(
             f"RWKV-7 model release\nSource: {plan.source.reference or plan.source.filename}\n"
+            "Bundled Transformers RWKV-7 code: huggingface/transformers@"
+            "4ad9ed0747ed6ba75c787e8f9040dcd64b166ee2 (Apache-2.0).\n"
             "Exported inference bundle licensed under Apache-2.0.\n",
             encoding="utf-8",
         )
@@ -415,6 +422,8 @@ def build_release(
             metadata=plan.metadata,
         )
         repo_id = f"{OFFICIAL_ORGANIZATION}/{model_name}"
+        for filename, model_source in build_model_code().items():
+            stage.joinpath(filename).write_text(model_source, encoding="utf-8")
         runtime = _write_inference(stage)
         incomplete.unlink()
         facts = inspect_weights(stage)
@@ -461,6 +470,7 @@ def build_release(
                 "synthesized_tensors": list(conversion.synthesized_tensors),
                 "tensor_map_sha256": facts.tensor_map_sha256,
             },
+            "model_code": model_code_provenance(),
             "runtime": runtime,
         }
         write_manifest(stage, manifest)

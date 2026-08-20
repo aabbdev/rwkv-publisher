@@ -50,8 +50,9 @@ optional TileLang inference implementation are distributed with this release.
 ## Highlights
 
 - **Constant recurrent state:** memory does not grow like an attention KV cache.
-- **Native Transformers layout:** standard config, sharded safetensors, generation,
-  recurrent cache continuation, training, and LoRA workflows.
+- **Bundled Transformers integration:** auditable remote configuration and modeling
+  modules provide generation, recurrent cache continuation, training, and LoRA
+  workflows on Transformers 5.15+.
 - **Exact Fast Tokenizer:** self-contained Rust-backed `tokenizer.json`, generated
   from the canonical RWKV World byte vocabulary during conversion.
 - **Chat-ready:** `chat_template.jinja` supports system, multi-turn, thinking, and
@@ -84,8 +85,12 @@ optional TileLang inference implementation are distributed with this release.
 
 ## Transformers quickstart
 
-Native `rwkv7` auto-class registration requires Transformers 5.15 or a current
-source checkout until that release is available.
+The repository includes `configuration_rwkv7.py` and `modeling_rwkv7.py`, adapted
+from the Transformers RWKV-7 integration at commit
+[`4ad9ed0`](https://github.com/huggingface/transformers/commit/4ad9ed0747ed6ba75c787e8f9040dcd64b166ee2).
+Review those files and pin a model-repository revision in production. Passing
+`trust_remote_code=True` selects this bundled implementation even when the local
+Transformers installation also provides native RWKV-7 support.
 
 $loading_example
 
@@ -102,6 +107,7 @@ model_id = "$repo_id"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
+    trust_remote_code=True,
     dtype=torch.$dtype,
 ).to("cuda")
 
@@ -160,7 +166,8 @@ parity validation.
 
 The model root contains one self-contained tokenizer artifact: `tokenizer.json`.
 Textual `vocab.json` and `rwkv_vocab_v20230424.txt` files are intentionally omitted
-because they would duplicate the tokenizer used by Transformers.
+because they would duplicate the tokenizer used by Transformers. The tokenizer is
+loaded natively as `PreTrainedTokenizerFast` and never executes remote Python code.
 
 ## Intended use and limitations
 
@@ -178,8 +185,9 @@ because they would duplicate the tokenizer used by Transformers.
 
 ## License and provenance
 
-$license_statement See [`NOTICE`](NOTICE) and the source checkpoint link above for
-provenance.
+$license_statement The bundled Transformers configuration and modeling modules
+retain their Apache-2.0 headers. See [`NOTICE`](NOTICE) and the source checkpoint
+link above for provenance.
 
 ## Citation
 

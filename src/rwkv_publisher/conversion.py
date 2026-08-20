@@ -9,6 +9,7 @@ from typing import Any
 
 from .assets import asset_path
 from .encoding import END_TOKEN, build_fast_tokenizer
+from .remote_code import REMOTE_AUTO_MAP
 
 DTYPES = {"float32", "float16", "bfloat16"}
 SIZE_UNITS = {
@@ -235,6 +236,7 @@ def _infer_config(state_dict: dict[str, Any], dtype: str) -> dict[str, Any]:
         raise ValueError("checkpoint has no value residual rank")
     config = {
         "architectures": ["Rwkv7ForCausalLM"],
+        "auto_map": dict(REMOTE_AUTO_MAP),
         "model_type": "rwkv7",
         "vocab_size": vocab_size,
         "hidden_size": hidden_size,

@@ -73,6 +73,11 @@ def test_convert_checkpoint_writes_native_sharded_model(tmp_path: Path) -> None:
         (output / "model.safetensors.index.json").read_text(encoding="utf-8")
     )
     assert config["architectures"] == ["Rwkv7ForCausalLM"]
+    assert config["auto_map"] == {
+        "AutoConfig": "configuration_rwkv7.Rwkv7Config",
+        "AutoModel": "modeling_rwkv7.Rwkv7Model",
+        "AutoModelForCausalLM": "modeling_rwkv7.Rwkv7ForCausalLM",
+    }
     assert config["model_type"] == "rwkv7"
     assert config["hidden_size"] == 64
     assert config["num_heads"] == 1
@@ -89,6 +94,10 @@ def test_convert_checkpoint_writes_native_sharded_model(tmp_path: Path) -> None:
     assert (output / "tokenizer.json").is_file()
     assert not (output / "rwkv_vocab_v20230424.txt").exists()
     assert not (output / "vocab.json").exists()
+    tokenizer_config = json.loads(
+        (output / "tokenizer_config.json").read_text(encoding="utf-8")
+    )
+    assert "auto_map" not in tokenizer_config
     tokenizer = AutoTokenizer.from_pretrained(
         output, config=PreTrainedConfig(), local_files_only=True
     )

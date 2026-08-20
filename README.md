@@ -49,8 +49,8 @@ The build automatically:
 2. infers and validates the RWKV-7 architecture;
 3. preserves the source floating dtype by default;
 4. writes bounded safetensors shards directly into temporary final staging;
-5. generates the native config, tokenizer, chat template, model card, and optional
-   optimized runtime;
+5. generates the config, bundled Transformers 5.15 RWKV-7 code, tokenizer, chat
+   template, model card, and optional optimized runtime;
 6. reconstructs and validates every generated artifact;
 7. atomically creates `dist/RWKV7-<size>B-<YYYYMMDD>`.
 
@@ -141,8 +141,10 @@ Credentials come from `hf auth login`; tokens are never command-line arguments.
 
 ## Generated repository
 
-The root is a standard native Transformers model repository. It contains no model
-Python files, `auto_map`, or `trust_remote_code` requirement.
+The root is a standalone Transformers model repository. It embeds the audited
+RWKV-7 configuration and modeling modules and maps the three model auto-classes to
+them. Model loading therefore uses `trust_remote_code=True`; the Fast tokenizer
+remains native and has no remote-code mapping.
 
 ```text
 RWKV7-<size>B-<YYYYMMDD>/
@@ -150,7 +152,9 @@ RWKV7-<size>B-<YYYYMMDD>/
 ├── LICENSE
 ├── NOTICE
 ├── config.json
+├── configuration_rwkv7.py
 ├── generation_config.json
+├── modeling_rwkv7.py
 ├── chat_template.jinja
 ├── model*.safetensors
 ├── model.safetensors.index.json  # only when sharded
@@ -185,20 +189,22 @@ python inference/generate.py --model . --backend auto --interactive
 `auto` uses validated exact optimized boundaries and falls back to pure PyTorch
 when TileLang, CUDA, dtype, architecture, or shape support is unavailable.
 
-Native `rwkv7` auto-class registration requires Transformers 5.15 or a current
-source checkout until that release is available.
+Use Transformers 5.15 or newer and pass `trust_remote_code=True` to `AutoConfig`,
+`AutoModel`, or `AutoModelForCausalLM`. Review the two root Python files and pin a
+Hub revision in production. `AutoTokenizer.from_pretrained(...)` does not require
+remote-code trust.
 
 ## Integrity model
 
 Publisher assets and official checkpoint profiles are embedded and SHA-256
-locked. The schema-4 manifest is destination-neutral and records source identity,
-dtype behavior, parameter counts, synthesized compatibility tensors, runtime
-provenance, and every released file.
+locked. The schema-5 manifest is destination-neutral and records source identity,
+dtype behavior, parameter counts, synthesized compatibility tensors, model-code
+and runtime provenance, and every released file.
 
 Validation does not trust editable manifest declarations: it rebuilds the
-tokenizer and optimized runtime from locked assets, rerenders templates, rechecks
-safetensors headers and shard paths, and compares the canonical license and model
-card.
+tokenizer, bundled model code, and optimized runtime from locked assets, rerenders
+templates, rechecks safetensors headers and shard paths, and compares the canonical
+license and model card.
 
 ## Development
 

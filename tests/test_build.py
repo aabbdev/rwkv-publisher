@@ -78,7 +78,7 @@ def built_release(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def test_build_produces_native_flat_valid_release(built_release: Path) -> None:
     manifest = validate_release(built_release)
-    assert manifest["schema_version"] == 4
+    assert manifest["schema_version"] == 5
     assert manifest["identity"]["parameter_label"] == "0.1"
     assert manifest["conversion"]["source_float_dtypes"] == ["float32"]
     assert manifest["conversion"]["target_float_dtypes"] == ["float32"]
@@ -91,7 +91,10 @@ def test_build_produces_native_flat_valid_release(built_release: Path) -> None:
     assert (built_release / "inference/kernel.py").is_file()
     assert not (built_release / "inference/decode").exists()
     assert not (built_release / "inference/rwkv7_pytorch").exists()
-    assert not list(built_release.glob("*.py"))
+    root_python = {path.name for path in built_release.glob("*.py")}
+    assert root_python == {"configuration_rwkv7.py", "modeling_rwkv7.py"}
+    for path in built_release.glob("*.py"):
+        compile(path.read_text(encoding="utf-8"), str(path), "exec")
     for path in (built_release / "inference").glob("*.py"):
         compile(path.read_text(encoding="utf-8"), str(path), "exec")
     tokenizer = AutoTokenizer.from_pretrained(
@@ -100,6 +103,62 @@ def test_build_produces_native_flat_valid_release(built_release: Path) -> None:
     assert tokenizer.encode("abc", add_special_tokens=False) == [258]
     assert (built_release.stat().st_mode & 0o222) == 0
     assert (built_release / "README.md").stat().st_mode & 0o222 == 0
+
+
+def test_bundled_model_code_loads_all_remote_auto_classes(
+    built_release: Path, tmp_path: Path
+) -> None:
+    script = r"""
+import sys
+
+import torch
+from transformers import AutoConfig, AutoModel, AutoModelForCausalLM, AutoTokenizer
+
+root = sys.argv[1]
+common = {
+    "trust_remote_code": True,
+    "local_files_only": True,
+}
+config = AutoConfig.from_pretrained(root, **common)
+base = AutoModel.from_pretrained(root, **common)
+causal = AutoModelForCausalLM.from_pretrained(root, **common)
+tokenizer = AutoTokenizer.from_pretrained(root, local_files_only=True)
+
+assert config.__class__.__name__ == "Rwkv7Config"
+assert base.__class__.__name__ == "Rwkv7Model"
+assert causal.__class__.__name__ == "Rwkv7ForCausalLM"
+assert config.__class__.__module__.startswith("transformers_modules.")
+assert base.__class__.__module__.startswith("transformers_modules.")
+assert causal.__class__.__module__.startswith("transformers_modules.")
+assert tokenizer.is_fast
+assert not tokenizer.__class__.__module__.startswith("transformers_modules.")
+
+input_ids = torch.tensor([[1, 2]], dtype=torch.long)
+with torch.no_grad():
+    output = causal(input_ids=input_ids, use_cache=True)
+assert output.logits.shape == (1, 2, config.vocab_size)
+assert output.state is not None
+generated = causal.generate(input_ids, max_new_tokens=1, do_sample=False)
+assert generated.shape[0] == 1
+assert generated.shape[1] == input_ids.shape[1] + 1
+"""
+    cache = tmp_path / "hf-cache"
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(built_release)],
+        cwd=built_release,
+        env={
+            **os.environ,
+            "HF_HOME": str(cache),
+            "HF_HUB_OFFLINE": "1",
+            "TRANSFORMERS_OFFLINE": "1",
+            "PYTHONDONTWRITEBYTECODE": "1",
+        },
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert not list(built_release.rglob("__pycache__"))
 
 
 def test_flat_runtime_imports_with_legacy_packages_blocked(
@@ -241,6 +300,58 @@ def test_manifest_reconstructs_locked_runtime_independently(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     with pytest.raises(ValueError, match="locked runtime"):
+        validate_release(built_release)
+
+
+def test_manifest_reconstructs_locked_model_code_independently(
+    built_release: Path,
+) -> None:
+    relative = "modeling_rwkv7.py"
+    path = built_release / relative
+    path.chmod(0o644)
+    path.write_text(path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    manifest = _accept_tampered_hash(built_release, relative)
+    manifest["model_code"]["sources"][relative]["output_sha256"] = sha256_file(path)
+    (built_release / "release-manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="model code does not match locked source"):
+        validate_release(built_release)
+
+
+def test_manifest_rejects_remote_mapping_tampering(built_release: Path) -> None:
+    relative = "config.json"
+    path = built_release / relative
+    path.chmod(0o644)
+    config = json.loads(path.read_text(encoding="utf-8"))
+    config["auto_map"]["AutoModel"] = "modeling_rwkv7.UnsafeModel"
+    path.write_text(
+        json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    _accept_tampered_hash(built_release, relative)
+    with pytest.raises(ValueError, match="remote auto_map"):
+        validate_release(built_release)
+
+
+def test_manifest_rejects_remote_tokenizer_mapping(built_release: Path) -> None:
+    relative = "tokenizer_config.json"
+    path = built_release / relative
+    path.chmod(0o644)
+    config = json.loads(path.read_text(encoding="utf-8"))
+    config["auto_map"] = {"AutoTokenizer": "tokenization_rwkv7.Rwkv7Tokenizer"}
+    path.write_text(
+        json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    _accept_tampered_hash(built_release, relative)
+    with pytest.raises(ValueError, match="tokenizer config"):
+        validate_release(built_release)
+
+
+def test_manifest_rejects_extra_root_python(built_release: Path) -> None:
+    built_release.chmod(0o755)
+    extra = built_release / "unexpected.py"
+    extra.write_text("raise RuntimeError('not allowed')\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="unclassified release file"):
         validate_release(built_release)
 
 

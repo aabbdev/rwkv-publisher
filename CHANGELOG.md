@@ -10,7 +10,9 @@
   template, and validated inference runtime.
 - Preserved source dtype by default and recorded every explicit cast and
   synthesized tensor in one semantic release manifest.
-- Made generated roots native Transformers artifacts with no remote code.
+- Bundled the Transformers 5.15 RWKV-7 configuration and modeling modules with
+  strict `AutoConfig`, `AutoModel`, and `AutoModelForCausalLM` remote mappings;
+  the Fast tokenizer remains native.
 - Reduced the optional runtime to five files under `inference/`: one generated
   `runtime.py`, one merged `kernel.py`, the loader, CLI, and requirements. Removed
   generated compatibility packages, internal module files, duplicated docs, and

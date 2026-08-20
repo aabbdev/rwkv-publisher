@@ -23,11 +23,17 @@ from .conversion import ConversionResult, _expected_shapes
 from .encoding import END_TOKEN, build_fast_tokenizer
 from .metadata import ReleaseMetadata
 from .profiles import load_profiles
+from .remote_code import (
+    MODEL_CODE_FILENAMES,
+    REMOTE_AUTO_MAP,
+    build_model_code,
+    model_code_provenance,
+)
 from .runtime_export import build_flat_runtime
 from .source import ResolvedSource
 
 MANIFEST_NAME = "release-manifest.json"
-MANIFEST_SCHEMA = 4
+MANIFEST_SCHEMA = 5
 DTYPE_BYTES = {
     "BOOL": 1,
     "U8": 1,
@@ -198,6 +204,8 @@ def _role(relative: str) -> str:
         return "model_card"
     if relative.startswith("inference/"):
         return "inference"
+    if relative in MODEL_CODE_FILENAMES:
+        return "model_code"
     if relative in {"config.json", "generation_config.json"}:
         return "model_config"
     if relative in {"tokenizer.json", "tokenizer_config.json", "chat_template.jinja"}:
@@ -260,6 +268,7 @@ def validate_release(root: Path) -> dict[str, Any]:
         "metadata",
         "identity",
         "conversion",
+        "model_code",
         "runtime",
         "files",
     }:
@@ -306,18 +315,23 @@ def validate_release(root: Path) -> dict[str, Any]:
         raise ValueError(
             "release inference tree does not match the flat runtime contract"
         )
-    root_python = [path.name for path in root.glob("*.py")]
-    if root_python:
+    root_python = {path.name for path in root.glob("*.py")}
+    if root_python != set(MODEL_CODE_FILENAMES):
         raise ValueError(
-            f"native model root must not contain Python runtime files: {root_python}"
+            "model root Python files do not match the locked remote-code allowlist: "
+            f"{sorted(root_python)}"
         )
+    expected_model_code = build_model_code()
+    for filename, expected_source in expected_model_code.items():
+        if (root / filename).read_text(encoding="utf-8") != expected_source:
+            raise ValueError(f"model code does not match locked source: {filename}")
     config = json.loads((root / "config.json").read_text(encoding="utf-8"))
     if config.get("model_type") != "rwkv7" or config.get("architectures") != [
         "Rwkv7ForCausalLM"
     ]:
         raise ValueError("release config is not native RWKV-7")
-    if config.get("auto_map"):
-        raise ValueError("native release must not contain auto_map")
+    if config.get("auto_map") != REMOTE_AUTO_MAP:
+        raise ValueError("release config remote auto_map does not match locked policy")
     if config.get("dtype") not in {"float32", "float16", "bfloat16"}:
         raise ValueError("native release has unsupported dtype")
     generation = json.loads(
@@ -392,6 +406,8 @@ def validate_release(root: Path) -> dict[str, Any]:
         or builder.get("assets_sha256") != assets["combined_sha256"]
     ):
         raise ValueError("manifest builder or asset lock does not match this publisher")
+    if document.get("model_code") != model_code_provenance():
+        raise ValueError("model code provenance does not match locked assets")
     profile_data = document.get("profile", {})
     checkpoint_id = profile_data.get("checkpoint")
     family_id = profile_data.get("family")
@@ -549,13 +565,9 @@ def validate_release(root: Path) -> dict[str, Any]:
     canonical_license = canonical_license_path().read_bytes()
     if (root / "LICENSE").read_bytes() != canonical_license:
         raise ValueError("release license does not match the canonical license")
-    text = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in (root / "README.md", root / "tokenizer_config.json")
-    )
-    if "trust_remote_code" in text or "auto_map" in text:
-        raise ValueError("native release documents or configures remote code")
     card = (root / "README.md").read_text(encoding="utf-8")
+    if "trust_remote_code=True" not in card:
+        raise ValueError("model card does not document remote-code loading")
     if not card.startswith("---\n") or "\n---\n" not in card[4:]:
         raise ValueError("model card has invalid frontmatter")
     frontmatter = card.split("---\n", 2)[1]

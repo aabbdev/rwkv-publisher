@@ -25,7 +25,7 @@ dev = [
     "pyright[nodejs]>=1.1.403",
     "pytest>=8.4.1",
     "ruff>=0.12.7",
-    "transformers>=4.57,<6",
+    "transformers>=5.15,<6",
 ]
 
 [build-system]
@@ -37,12 +37,18 @@ addopts = "-q"
 testpaths = ["tests"]
 
 [tool.ruff]
-extend-exclude = ["src/rwkv_publisher/assets/runtime"]
+extend-exclude = [
+    "src/rwkv_publisher/assets/model_code",
+    "src/rwkv_publisher/assets/runtime",
+]
 
 [tool.ruff.lint]
 extend-select = ["I", "UP"]
 
 [tool.pyright]
 include = ["src", "tests"]
-exclude = ["src/rwkv_publisher/assets/runtime"]
+exclude = [
+    "src/rwkv_publisher/assets/model_code",
+    "src/rwkv_publisher/assets/runtime",
+]
 pythonVersion = "3.12"

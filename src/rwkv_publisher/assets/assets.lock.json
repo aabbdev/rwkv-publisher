@@ -1,6 +1,6 @@
 {
   "asset_set": "2026.08.06-r1",
-  "combined_sha256": "6d8637e951d8ea83e0ba5bdb70ef0c378f629e4f3aecd1689dd68146807ab8a9",
+  "combined_sha256": "1418b5fb950d0e551749f2c438ff1003262be984ebf0a76d0b7b053e46e5ad43",
   "compatibility": {
     "cuda": "12.8",
     "python": "3.12",
@@ -9,6 +9,18 @@
     "transformers": ">=5.15"
   },
   "files": {
+    "model_code/configuration_rwkv7.py": {
+      "origin": "https://github.com/huggingface/transformers.git@4ad9ed0747ed6ba75c787e8f9040dcd64b166ee2/src/transformers/models/rwkv7/configuration_rwkv7.py",
+      "sha256": "6f5b92c5fe7498ad22b0054a2f735a7ca82e7577436f4ad32f0fc27d1e900fdd",
+      "size_bytes": 7298,
+      "version": "2026.08.06-r1"
+    },
+    "model_code/modeling_rwkv7.py": {
+      "origin": "https://github.com/huggingface/transformers.git@4ad9ed0747ed6ba75c787e8f9040dcd64b166ee2/src/transformers/models/rwkv7/modeling_rwkv7.py",
+      "sha256": "3e8e5af7c4eba0b5de1496aef44773d7ac1bb4d96756e6f55efaf29453d67952",
+      "size_bytes": 57387,
+      "version": "2026.08.06-r1"
+    },
     "profiles.json": {
       "origin": "verified BlinkDL Hub checkpoint metadata",
       "sha256": "9ea5164a3dddeb489e20a9c0e8912594287179c44d83e9907fd47647333fa9a8",

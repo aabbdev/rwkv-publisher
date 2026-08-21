@@ -6,11 +6,13 @@ from pathlib import Path
 
 import pytest
 
+from rwkv_publisher import remote_code as remote_code_module
 from rwkv_publisher.assets import asset_root
 from rwkv_publisher.remote_code import (
     MODEL_CODE_FILENAMES,
     REMOTE_AUTO_MAP,
     REMOTE_CODE_FILES,
+    SFT_COMPATIBILITY_PATCHES,
     SOURCE_REVISION,
     TRANSFORMERS_MIN_VERSION,
     build_model_code,
@@ -43,6 +45,7 @@ def test_remote_code_assets_and_provenance_are_pinned() -> None:
     assert model_code_provenance() == export.provenance
     assert export.provenance["source_revision"] == SOURCE_REVISION
     assert export.provenance["transformers_min_version"] == TRANSFORMERS_MIN_VERSION
+    assert export.provenance["patches"] == list(SFT_COMPATIBILITY_PATCHES)
     assert set(export.provenance["sources"]) == set(REMOTE_CODE_FILES)
     for filename, expected_hash in EXPECTED_SOURCE_HASHES.items():
         raw = (asset_root() / "model_code" / filename).read_text(encoding="utf-8")
@@ -70,6 +73,11 @@ def test_remote_code_changes_only_allowlisted_deep_imports() -> None:
         compile(published, filename, "exec")
         assert "from ..." not in published
         restored = published
+        for original, patched in reversed(
+            remote_code_module._SOURCE_PATCHES.get(filename, ())
+        ):
+            assert restored.count(patched) == 1
+            restored = restored.replace(patched, original)
         for adapted, original in replacements.items():
             restored = restored.replace(adapted, original)
         raw = (asset_root() / "model_code" / filename).read_text(encoding="utf-8")

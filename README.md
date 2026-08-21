@@ -189,6 +189,11 @@ python inference/generate.py --model . --backend auto --interactive
 `auto` uses validated exact optimized boundaries and falls back to pure PyTorch
 when TileLang, CUDA, dtype, architecture, or shape support is unavailable.
 
+The bundled Transformers model is compatible with TRL 1.10+ `SFTTrainer`,
+including default chunked loss, gradient checkpointing, assistant-only masks,
+default BFD packing, and explicit PEFT LoRA targets. Wrapped packing is excluded
+because it discards recurrent sequence boundaries.
+
 Use Transformers 5.15 or newer and pass `trust_remote_code=True` to `AutoConfig`,
 `AutoModel`, or `AutoModelForCausalLM`. Review the two root Python files and pin a
 Hub revision in production. `AutoTokenizer.from_pretrained(...)` does not require
@@ -197,7 +202,7 @@ remote-code trust.
 ## Integrity model
 
 Publisher assets and official checkpoint profiles are embedded and SHA-256
-locked. The schema-7 manifest is destination-neutral and records source identity,
+locked. The schema-8 manifest is destination-neutral and records source identity,
 dtype behavior, parameter counts, synthesized compatibility tensors, model-code
 and runtime provenance, and every released file.
 

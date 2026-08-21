@@ -179,6 +179,44 @@ Reference stops are token ID `0` and `\n\nUser:`.
 Strip trailing spaces from user input. The official RWKV prompt guide is available
 in [`RWKV7-G1x-templates.txt`](https://github.com/BlinkDL/RWKV-LM/blob/main/RWKV-v7/RWKV7-G1x-templates.txt).
 
+## Supervised fine-tuning
+
+The bundled model supports TRL 1.10+ `SFTTrainer`, including its default
+`chunked_nll`, gradient checkpointing, assistant-only loss, BFD packing, and PEFT
+LoRA. Packing boundaries carried as reset `position_ids` are converted into RWKV
+recurrent-state boundaries. Do not use the boundary-destroying `wrapped` packing
+strategy.
+
+```python
+from datasets import load_dataset
+from peft import LoraConfig
+from trl import SFTConfig, SFTTrainer
+
+# Reuse `model` and `tokenizer` loaded in the Transformers quickstart above.
+dataset = load_dataset("trl-lib/Capybara", split="train")
+trainer = SFTTrainer(
+    model=model,
+    processing_class=tokenizer,
+    train_dataset=dataset,
+    args=SFTConfig(
+        output_dir="rwkv7-sft",
+        max_length=2048,
+        packing=True,
+        packing_strategy="bfd",
+        assistant_only_loss=True,
+        use_cache=False,
+        gradient_checkpointing=True,
+    ),
+    peft_config=LoraConfig(
+        task_type="CAUSAL_LM",
+        r=8,
+        lora_alpha=16,
+        target_modules=["receptance", "key", "value", "output"],
+    ),
+)
+trainer.train()
+```
+
 ## Optimized local inference
 
 Install the versions listed in `inference/requirements.txt`, then run the bundled

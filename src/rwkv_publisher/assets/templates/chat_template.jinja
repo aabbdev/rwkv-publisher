@@ -1,7 +1,7 @@
-{%- set add_generation_prompt = add_generation_prompt | default(true) -%}
+{%- set add_generation_prompt = add_generation_prompt | default(false) -%}
 {%- set thinking = thinking | default(false) -%}
-{%- set bos_token = bos_token | default('') -%}
-{%- set tools = tools | default([]) -%}
+{%- set bos_token = bos_token | default('', true) -%}
+{%- set tools = tools | default([], true) -%}
 {%- set ns = namespace(system_prompt='') -%}
 {%- for message in messages -%}
     {%- if message.role == 'system' -%}
@@ -23,6 +23,7 @@
 {%- if message.role == 'user' -%}
 {{ 'User: ' ~ (message.content | trim) ~ '\n\n' }}
 {%- elif message.role == 'assistant' -%}
+{%- generation -%}
 {%- set content = message.content | default('', true) | trim -%}
 {{ 'Assistant:' }}
 {%- if message.tool_calls is defined and message.tool_calls | length > 0 -%}
@@ -43,6 +44,7 @@
 {{ ' ' ~ content }}
 {%- endif -%}
 {{ '\n\n' }}
+{%- endgeneration -%}
 {%- elif message.role == 'tool' -%}
 {{ 'User: Function output:\n' ~ (message.content | trim) ~ '\n\n' }}
 {%- endif -%}

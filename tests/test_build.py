@@ -78,7 +78,7 @@ def built_release(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def test_build_produces_native_flat_valid_release(built_release: Path) -> None:
     manifest = validate_release(built_release)
-    assert manifest["schema_version"] == 7
+    assert manifest["schema_version"] == 8
     assert manifest["identity"]["parameter_label"] == "0.1"
     assert manifest["conversion"]["source_float_dtypes"] == ["float32"]
     assert manifest["conversion"]["target_float_dtypes"] == ["float32"]
@@ -111,6 +111,27 @@ def test_build_produces_native_flat_valid_release(built_release: Path) -> None:
     assert prompt == "User: hello\n\nAssistant: <think></think>\n"
     prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
     assert prompt_ids[0] != 0
+    conversation = [
+        {"role": "user", "content": "hello"},
+        {"role": "assistant", "content": "hi"},
+    ]
+    assert tokenizer.apply_chat_template(conversation, tokenize=False) == (
+        "User: hello\n\nAssistant: hi\n\n"
+    )
+    masked = tokenizer.apply_chat_template(
+        conversation,
+        tokenize=True,
+        return_dict=True,
+        return_assistant_tokens_mask=True,
+    )
+    assistant_ids = [
+        token_id
+        for token_id, selected in zip(
+            masked["input_ids"], masked["assistant_masks"], strict=True
+        )
+        if selected
+    ]
+    assert "Assistant: hi" in tokenizer.decode(assistant_ids)
     assert (built_release.stat().st_mode & 0o222) == 0
     assert (built_release / "README.md").stat().st_mode & 0o222 == 0
 
@@ -600,3 +621,6 @@ def test_model_card_separates_weight_and_runtime_licenses(tmp_path: Path) -> Non
     assert 'inputs["input_ids"].shape[1]' in card
     assert 'stop_strings=["\\n\\nUser:"]' in card
     assert "close_incomplete=reached_token_limit" in card
+    assert 'packing_strategy="bfd"' in card
+    assert "assistant_only_loss=True" in card
+    assert 'target_modules=["receptance", "key", "value", "output"]' in card

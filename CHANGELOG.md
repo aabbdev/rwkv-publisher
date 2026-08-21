@@ -17,6 +17,8 @@
   prefix before displaying or retaining assistant replies.
 - Closed the non-thinking generation prefix as `<think></think>\n` so ordinary
   completions begin directly with answer text.
+- Added TRL SFT compatibility for chunked loss, recurrent packing, assistant-only
+  masks, training cache behavior, and unused layer-zero value parameters.
 - Reduced the optional runtime to five files under `inference/`: one generated
   `runtime.py`, one merged `kernel.py`, the loader, CLI, and requirements. Removed
   generated compatibility packages, internal module files, duplicated docs, and

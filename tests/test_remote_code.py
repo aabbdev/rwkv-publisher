@@ -14,6 +14,7 @@ from rwkv_publisher.remote_code import (
     REMOTE_CODE_FILES,
     SFT_COMPATIBILITY_PATCHES,
     SOURCE_REVISION,
+    TOKENIZER_AUTO_MAP,
     TRANSFORMERS_MIN_VERSION,
     build_model_code,
     build_remote_code,
@@ -24,6 +25,7 @@ from rwkv_publisher.remote_code import (
 EXPECTED_SOURCE_HASHES = {
     "configuration_rwkv7.py": "6f5b92c5fe7498ad22b0054a2f735a7ca82e7577436f4ad32f0fc27d1e900fdd",
     "modeling_rwkv7.py": "3e8e5af7c4eba0b5de1496aef44773d7ac1bb4d96756e6f55efaf29453d67952",
+    "tokenization_rwkv7.py": "b5bce95fd91265e3fe59e939a19dc22747461efc17657e7fa3497070cc4cdd76",
 }
 
 
@@ -40,6 +42,9 @@ def test_remote_code_assets_and_provenance_are_pinned() -> None:
         "AutoModel": "modeling_rwkv7.Rwkv7Model",
         "AutoModelForCausalLM": "modeling_rwkv7.Rwkv7ForCausalLM",
     }
+    assert TOKENIZER_AUTO_MAP == {
+        "AutoTokenizer": ["tokenization_rwkv7.Rwkv7Tokenizer", None]
+    }
     assert tuple(export.files) == REMOTE_CODE_FILES
     assert build_model_code() == export.files
     assert model_code_provenance() == export.provenance
@@ -52,7 +57,12 @@ def test_remote_code_assets_and_provenance_are_pinned() -> None:
         item = export.provenance["sources"][filename]
         assert _sha256(raw) == expected_hash == item["source_sha256"]
         assert item["asset_path"] == f"model_code/{filename}"
-        assert item["repository_path"].endswith(f"/rwkv7/{filename}")
+        if filename == "tokenization_rwkv7.py":
+            assert item["repository_path"].endswith(
+                "/assets/model_code/tokenization_rwkv7.py"
+            )
+        else:
+            assert item["repository_path"].endswith(f"/rwkv7/{filename}")
         assert item["output_sha256"] == _sha256(export.files[filename])
 
 

@@ -26,6 +26,7 @@ from .profiles import load_profiles
 from .remote_code import (
     MODEL_CODE_FILENAMES,
     REMOTE_AUTO_MAP,
+    TOKENIZER_AUTO_MAP,
     build_model_code,
     model_code_provenance,
 )
@@ -347,8 +348,11 @@ def validate_release(root: Path) -> dict[str, Any]:
     tokenizer_config = json.loads(
         (root / "tokenizer_config.json").read_text(encoding="utf-8")
     )
-    if tokenizer_config.get("tokenizer_class") != "PreTrainedTokenizerFast" or any(
-        key in tokenizer_config for key in ("auto_map", "bos_token", "model_max_length")
+    if (
+        tokenizer_config.get("tokenizer_class") != "Rwkv7Tokenizer"
+        or tokenizer_config.get("auto_map") != TOKENIZER_AUTO_MAP
+        or tokenizer_config.get("backend") != "rwkv_world_trie"
+        or any(key in tokenizer_config for key in ("bos_token", "model_max_length"))
     ):
         raise ValueError("tokenizer config is not native and position-neutral")
     tokenizer = Tokenizer.from_file(str(root / "tokenizer.json"))

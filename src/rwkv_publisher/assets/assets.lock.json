@@ -1,6 +1,6 @@
 {
   "asset_set": "2026.08.06-r1",
-  "combined_sha256": "536d0d0afa96630b2bad11534ebe35434226f83b8999a1c60d76fe37802ff139",
+  "combined_sha256": "a61050578247508a9542d0f9aca713ec9c9c5e86652e98d4b97bf571d5e57049",
   "compatibility": {
     "cuda": "12.8",
     "python": "3.12",
@@ -19,6 +19,12 @@
       "origin": "https://github.com/huggingface/transformers.git@4ad9ed0747ed6ba75c787e8f9040dcd64b166ee2/src/transformers/models/rwkv7/modeling_rwkv7.py",
       "sha256": "3e8e5af7c4eba0b5de1496aef44773d7ac1bb4d96756e6f55efaf29453d67952",
       "size_bytes": 57387,
+      "version": "2026.08.06-r1"
+    },
+    "model_code/tokenization_rwkv7.py": {
+      "origin": "rwkv-publisher exact RWKV World trie tokenizer by Lucas / aabbdev",
+      "sha256": "b5bce95fd91265e3fe59e939a19dc22747461efc17657e7fa3497070cc4cdd76",
+      "size_bytes": 13702,
       "version": "2026.08.06-r1"
     },
     "profiles.json": {

@@ -117,12 +117,11 @@ def _loading_example(repo_id: str, dtype: str) -> str:
         "from transformers import (\n"
         "    AutoModelForCausalLM,\n"
         "    AutoTokenizer,\n"
-        "    PreTrainedConfig,\n"
         ")\n\n"
         f'model_id = "{repo_id}"\n'
         "tokenizer = AutoTokenizer.from_pretrained(\n"
         "    model_id,\n"
-        "    config=PreTrainedConfig(),\n"
+        "    trust_remote_code=True,\n"
         ")\n"
         "model = AutoModelForCausalLM.from_pretrained(\n"
         "    model_id,\n"

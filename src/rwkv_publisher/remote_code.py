@@ -8,14 +8,19 @@ from typing import Any
 
 from .assets import asset_root
 
-REMOTE_CODE_FORMAT_VERSION = 2
-REMOTE_CODE_FILES = ("configuration_rwkv7.py", "modeling_rwkv7.py")
+REMOTE_CODE_FORMAT_VERSION = 3
+REMOTE_CODE_FILES = (
+    "configuration_rwkv7.py",
+    "modeling_rwkv7.py",
+    "tokenization_rwkv7.py",
+)
 MODEL_CODE_FILENAMES = REMOTE_CODE_FILES
 REMOTE_AUTO_MAP = {
     "AutoConfig": "configuration_rwkv7.Rwkv7Config",
     "AutoModel": "modeling_rwkv7.Rwkv7Model",
     "AutoModelForCausalLM": "modeling_rwkv7.Rwkv7ForCausalLM",
 }
+TOKENIZER_AUTO_MAP = {"AutoTokenizer": ["tokenization_rwkv7.Rwkv7Tokenizer", None]}
 SOURCE_REPOSITORY = "https://github.com/huggingface/transformers.git"
 SOURCE_REVISION = "4ad9ed0747ed6ba75c787e8f9040dcd64b166ee2"
 SOURCE_DIRECTORY = "src/transformers/models/rwkv7"
@@ -28,6 +33,7 @@ SFT_COMPATIBILITY_PATCHES = (
 )
 
 _IMPORT_REPLACEMENTS = {
+    "tokenization_rwkv7.py": (),
     "configuration_rwkv7.py": (
         (
             "from ...configuration_utils import PreTrainedConfig",
@@ -263,9 +269,14 @@ def build_remote_code(source_root: Path | None = None) -> RemoteCodeExport:
         source = path.read_text(encoding="utf-8")
         transformed = transform_remote_source(source, filename)
         files[filename] = transformed
+        repository_path = (
+            f"{SOURCE_DIRECTORY}/{filename}"
+            if filename != "tokenization_rwkv7.py"
+            else "rwkv-publisher/src/rwkv_publisher/assets/model_code/tokenization_rwkv7.py"
+        )
         sources[filename] = {
             "asset_path": f"model_code/{filename}",
-            "repository_path": f"{SOURCE_DIRECTORY}/{filename}",
+            "repository_path": repository_path,
             "source_sha256": _sha256_text(source),
             "output_sha256": _sha256_text(transformed),
         }
@@ -297,6 +308,7 @@ __all__ = [
     "SOURCE_DIRECTORY",
     "SOURCE_REPOSITORY",
     "SOURCE_REVISION",
+    "TOKENIZER_AUTO_MAP",
     "TRANSFORMERS_MIN_VERSION",
     "RemoteCodeExport",
     "build_model_code",

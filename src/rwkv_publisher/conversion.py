@@ -9,7 +9,7 @@ from typing import Any
 
 from .assets import asset_path
 from .encoding import END_TOKEN, build_fast_tokenizer
-from .remote_code import REMOTE_AUTO_MAP
+from .remote_code import REMOTE_AUTO_MAP, TOKENIZER_AUTO_MAP, build_model_code
 
 DTYPES = {"float32", "float16", "bfloat16"}
 SIZE_UNITS = {
@@ -372,11 +372,12 @@ def _write_tokenizer(output_dir: Path, vocab_file: Path, vocab_size: int) -> Non
                         "special": True,
                     }
                 },
-                "backend": "tokenizers",
+                "auto_map": TOKENIZER_AUTO_MAP,
+                "backend": "rwkv_world_trie",
                 "eos_token": END_TOKEN,
                 "pad_token": END_TOKEN,
                 "padding_side": "left",
-                "tokenizer_class": "PreTrainedTokenizerFast",
+                "tokenizer_class": "Rwkv7Tokenizer",
                 "unk_token": END_TOKEN,
             },
             indent=2,
@@ -384,6 +385,9 @@ def _write_tokenizer(output_dir: Path, vocab_file: Path, vocab_size: int) -> Non
         )
         + "\n",
         encoding="utf-8",
+    )
+    (output_dir / "tokenization_rwkv7.py").write_text(
+        build_model_code()["tokenization_rwkv7.py"], encoding="utf-8"
     )
 
 

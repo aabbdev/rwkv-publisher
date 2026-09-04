@@ -155,6 +155,7 @@ RWKV7-<size>B-<YYYYMMDD>/
 ├── configuration_rwkv7.py
 ├── generation_config.json
 ├── modeling_rwkv7.py
+├── tokenization_rwkv7.py
 ├── chat_template.jinja
 ├── model*.safetensors
 ├── model.safetensors.index.json  # only when sharded
@@ -194,10 +195,28 @@ including default chunked loss, gradient checkpointing, assistant-only masks,
 default BFD packing, and explicit PEFT LoRA targets. Wrapped packing is excluded
 because it discards recurrent sequence boundaries.
 
-Use Transformers 5.15 or newer and pass `trust_remote_code=True` to `AutoConfig`,
-`AutoModel`, or `AutoModelForCausalLM`. Review the two root Python files and pin a
-Hub revision in production. `AutoTokenizer.from_pretrained(...)` does not require
-remote-code trust.
+Use Transformers 5.15 or newer and pass trust_remote_code=True to AutoConfig,
+AutoModel, AutoModelForCausalLM, or AutoTokenizer. Review the three root Python
+files and pin a Hub revision in production.
+
+### Exact tokenizer for long inputs
+
+The retained Rust-backed tokenizer.json is the sole vocabulary data artifact.
+AutoTokenizer maps to the bundled exact RWKV World trie, whose lookahead is
+bounded by the longest vocabulary token (128 bytes):
+
+    from transformers import AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_id,
+        revision=revision,
+        trust_remote_code=True,
+    )
+    inputs = tokenizer(prompt, return_tensors="pt")
+
+The trie preserves exact canonical IDs, supports chat-template assistant masks,
+and avoids WordPiece quadratic behavior on long repetitive inputs. It reads no
+separate text vocabulary and does not use eval.
 
 ## Integrity model
 

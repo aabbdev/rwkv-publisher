@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from transformers import AutoTokenizer, PreTrainedConfig, PreTrainedTokenizerFast
+from transformers import AutoTokenizer
 
 from rwkv_publisher import conversion
 from rwkv_publisher.cli import main
@@ -97,15 +97,19 @@ def test_convert_checkpoint_writes_native_sharded_model(tmp_path: Path) -> None:
     tokenizer_config = json.loads(
         (output / "tokenizer_config.json").read_text(encoding="utf-8")
     )
-    assert "auto_map" not in tokenizer_config
+    assert tokenizer_config["auto_map"] == {
+        "AutoTokenizer": ["tokenization_rwkv7.Rwkv7Tokenizer", None]
+    }
     assert "bos_token" not in tokenizer_config
     tokenizer = AutoTokenizer.from_pretrained(
-        output, config=PreTrainedConfig(), local_files_only=True
+        output, local_files_only=True, trust_remote_code=True
     )
-    assert isinstance(tokenizer, PreTrainedTokenizerFast)
-    assert tokenizer.is_fast
+    assert tokenizer.__class__.__name__ == "Rwkv7Tokenizer"
+    assert not tokenizer.is_fast
+    assert tokenizer.__class__.__module__.startswith("transformers_modules.")
     assert tokenizer.bos_token is None
     assert tokenizer.encode("abc", add_special_tokens=False) == [258]
+    assert tokenizer.encode("abc" * 10_000, add_special_tokens=False) == [258] * 10_000
 
 
 def test_shared_storage_sharding_honors_logical_limit(tmp_path: Path) -> None:

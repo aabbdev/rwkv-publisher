@@ -11,7 +11,11 @@ ASSET_SET = "2026.08.06-r1"
 MODEL_CODE_REPOSITORY = "https://github.com/huggingface/transformers.git"
 MODEL_CODE_REVISION = "4ad9ed0747ed6ba75c787e8f9040dcd64b166ee2"
 MODEL_CODE_SOURCE_DIRECTORY = "src/transformers/models/rwkv7"
-MODEL_CODE_FILENAMES = ("configuration_rwkv7.py", "modeling_rwkv7.py")
+MODEL_CODE_FILENAMES = (
+    "configuration_rwkv7.py",
+    "modeling_rwkv7.py",
+    "tokenization_rwkv7.py",
+)
 
 
 def origin(relative: str) -> str:
@@ -21,6 +25,8 @@ def origin(relative: str) -> str:
         return "RWKV7_Pytorch/rwkv_vocab_v20230424.txt"
     if relative == "templates/chat_template.jinja":
         return "RWKV7_Pytorch/chat_template.j2 with complete non-thinking prefix and TRL generation markers"
+    if relative == "model_code/tokenization_rwkv7.py":
+        return "rwkv-publisher exact RWKV World trie tokenizer by Lucas / aabbdev"
     if relative.startswith("model_code/"):
         if relative not in {
             f"model_code/{filename}" for filename in MODEL_CODE_FILENAMES

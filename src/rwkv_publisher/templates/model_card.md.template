@@ -85,7 +85,8 @@ optional TileLang inference implementation are distributed with this release.
 
 ## Transformers quickstart
 
-The repository includes `configuration_rwkv7.py` and `modeling_rwkv7.py`, adapted
+The repository includes `configuration_rwkv7.py`, `modeling_rwkv7.py`, and the
+exact linear-time `tokenization_rwkv7.py`. The model modules are adapted
 from the Transformers RWKV-7 integration at commit
 [`4ad9ed0`](https://github.com/huggingface/transformers/commit/4ad9ed0747ed6ba75c787e8f9040dcd64b166ee2).
 Review those files and pin a model-repository revision in production. Passing
@@ -103,7 +104,7 @@ decoding. Use an `attention_mask` for padded batches.
 import re
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 THINK_RE = re.compile(r"\A<think>?\s*(.*?)\s*</think>?", re.DOTALL)
@@ -122,7 +123,7 @@ def assistant_content(completion, thinking, *, close_incomplete=False):
 model_id = "$repo_id"
 tokenizer = AutoTokenizer.from_pretrained(
     model_id,
-    config=PreTrainedConfig(),
+    trust_remote_code=True,
 )
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
@@ -242,12 +243,12 @@ parity validation.
 
 ## Tokenizer
 
-The model root contains one self-contained tokenizer artifact: `tokenizer.json`.
+The model root contains one self-contained tokenizer-data artifact: `tokenizer.json`.
 Textual `vocab.json` and `rwkv_vocab_v20230424.txt` files are intentionally omitted
 because they would duplicate the tokenizer used by Transformers. The tokenizer is
-loaded natively as `PreTrainedTokenizerFast` and never executes remote Python code.
-The explicit generic config prevents `AutoTokenizer` from probing the remote model
-configuration and emitting a harmless model-type fallback warning.
+loaded by the bundled `Rwkv7Tokenizer` trie through `AutoTokenizer` with
+`trust_remote_code=True`. The trie reads only `tokenizer.json`, preserves exact
+RWKV World IDs, and has bounded linear-time behavior on long repetitive inputs.
 
 ## Intended use and limitations
 

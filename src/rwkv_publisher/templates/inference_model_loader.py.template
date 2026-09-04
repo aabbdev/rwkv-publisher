@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 from huggingface_hub import snapshot_download
 from safetensors.torch import load_file
-from transformers import AutoTokenizer, PreTrainedConfig
+from transformers import AutoTokenizer
 
 from .runtime import RWKV7Config, RWKV7ForCausalLM
 
@@ -139,8 +139,8 @@ def _load_native_model(
 def _load_tokenizer(model_dir: Path):
     return AutoTokenizer.from_pretrained(
         model_dir,
-        config=PreTrainedConfig(),
         local_files_only=True,
+        trust_remote_code=True,
     )
 
 

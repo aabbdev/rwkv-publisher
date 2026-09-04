@@ -11,8 +11,10 @@
 - Preserved source dtype by default and recorded every explicit cast and
   synthesized tensor in one semantic release manifest.
 - Bundled the Transformers 5.15 RWKV-7 configuration and modeling modules with
-  strict `AutoConfig`, `AutoModel`, and `AutoModelForCausalLM` remote mappings;
-  the Fast tokenizer remains native.
+  strict `AutoConfig`, `AutoModel`, and `AutoModelForCausalLM` remote mappings.
+- Added an exact bounded-lookahead RWKV World trie for linear-time long-input
+  encoding. Generated releases map `AutoTokenizer` to the locked remote module
+  while retaining `tokenizer.json` as their only vocabulary data.
 - Removed the spurious chat BOS token and reconstructed the partial RWKV thinking
   prefix before displaying or retaining assistant replies.
 - Closed the non-thinking generation prefix as `<think></think>\n` so ordinary

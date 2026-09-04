@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from transformers import AutoTokenizer, PreTrainedConfig
+from transformers import AutoTokenizer
 
 from rwkv_publisher import build as build_module
 from rwkv_publisher import conversion
@@ -92,13 +92,17 @@ def test_build_produces_native_flat_valid_release(built_release: Path) -> None:
     assert not (built_release / "inference/decode").exists()
     assert not (built_release / "inference/rwkv7_pytorch").exists()
     root_python = {path.name for path in built_release.glob("*.py")}
-    assert root_python == {"configuration_rwkv7.py", "modeling_rwkv7.py"}
+    assert root_python == {
+        "configuration_rwkv7.py",
+        "modeling_rwkv7.py",
+        "tokenization_rwkv7.py",
+    }
     for path in built_release.glob("*.py"):
         compile(path.read_text(encoding="utf-8"), str(path), "exec")
     for path in (built_release / "inference").glob("*.py"):
         compile(path.read_text(encoding="utf-8"), str(path), "exec")
     tokenizer = AutoTokenizer.from_pretrained(
-        built_release, config=PreTrainedConfig(), local_files_only=True
+        built_release, local_files_only=True, trust_remote_code=True
     )
     assert tokenizer.encode("abc", add_special_tokens=False) == [258]
     assert tokenizer.bos_token is None
@@ -148,7 +152,6 @@ from transformers import (
     AutoModel,
     AutoModelForCausalLM,
     AutoTokenizer,
-    PreTrainedConfig,
 )
 
 root = sys.argv[1]
@@ -161,8 +164,8 @@ base = AutoModel.from_pretrained(root, **common)
 causal = AutoModelForCausalLM.from_pretrained(root, **common)
 tokenizer = AutoTokenizer.from_pretrained(
     root,
-    config=PreTrainedConfig(),
     local_files_only=True,
+    trust_remote_code=True,
 )
 
 assert config.__class__.__name__ == "Rwkv7Config"
@@ -171,8 +174,8 @@ assert causal.__class__.__name__ == "Rwkv7ForCausalLM"
 assert config.__class__.__module__.startswith("transformers_modules.")
 assert base.__class__.__module__.startswith("transformers_modules.")
 assert causal.__class__.__module__.startswith("transformers_modules.")
-assert tokenizer.is_fast
-assert not tokenizer.__class__.__module__.startswith("transformers_modules.")
+assert not tokenizer.is_fast
+assert tokenizer.__class__.__module__.startswith("transformers_modules.")
 
 input_ids = torch.tensor([[1, 2]], dtype=torch.long)
 with torch.no_grad():

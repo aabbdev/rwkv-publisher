@@ -26,6 +26,7 @@ SOURCE_REVISION = "4ad9ed0747ed6ba75c787e8f9040dcd64b166ee2"
 SOURCE_DIRECTORY = "src/transformers/models/rwkv7"
 TRANSFORMERS_MIN_VERSION = "5.15"
 SFT_COMPATIBILITY_PATCHES = (
+    "chunked-wkv-default",
     "layer-zero-value-residual-buffers",
     "trainer-past-key-values-placeholder",
     "trl-position-ids-packing-boundaries",
@@ -72,6 +73,16 @@ _IMPORT_REPLACEMENTS = {
     ),
 }
 _SOURCE_PATCHES = {
+    "configuration_rwkv7.py": (
+        (
+            'wkv_implementation (`str`, *optional*, defaults to `"eager"`):',
+            'wkv_implementation (`str`, *optional*, defaults to `"chunked"`):',
+        ),
+        (
+            '    wkv_implementation: str = "eager"',
+            '    wkv_implementation: str = "chunked"',
+        ),
+    ),
     "modeling_rwkv7.py": (
         (
             """        self.v1 = nn.Parameter(torch.zeros(C, config.v_low_rank_dim))

@@ -251,7 +251,7 @@ def _infer_config(state_dict: dict[str, Any], dtype: str) -> dict[str, Any]:
         "norm_eps": 1e-5,
         "norm_bias": True,
         "wkv_state_dtype": "float32",
-        "wkv_implementation": "eager",
+        "wkv_implementation": "chunked",
         "use_cache": True,
         "tie_word_embeddings": False,
         "bos_token_id": 0,

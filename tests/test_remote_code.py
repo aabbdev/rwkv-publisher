@@ -35,6 +35,9 @@ def _sha256(source: str) -> str:
 
 def test_remote_code_assets_and_provenance_are_pinned() -> None:
     export = build_remote_code()
+    assert (
+        'wkv_implementation: str = "chunked"' in export.files["configuration_rwkv7.py"]
+    )
 
     assert MODEL_CODE_FILENAMES == REMOTE_CODE_FILES
     assert REMOTE_AUTO_MAP == {

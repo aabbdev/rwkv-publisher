@@ -83,6 +83,7 @@ def test_convert_checkpoint_writes_native_sharded_model(tmp_path: Path) -> None:
     assert config["num_heads"] == 1
     assert config["head_dim"] == 64
     assert config["dtype"] == "bfloat16"
+    assert config["wkv_implementation"] == "chunked"
     assert set(index["weight_map"]) == {
         conversion._native_key(key) for key in _tiny_native(torch)
     }
